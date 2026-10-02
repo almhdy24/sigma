@@ -1,111 +1,198 @@
+/* ═══════════════════════════════════════════════════════════════
+   Design tokens
+   ═══════════════════════════════════════════════════════════════ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --ink:         #1c2b3a;   /* primary text — deep navy            */
+  --accent:      #1f5fa6;   /* interactive / active states         */
+  --page:        #f2f5f8;   /* page background — cool near-white   */
+  --surface:     #ffffff;   /* cards, modals, table surfaces       */
+  --border:      #c8d6e2;   /* borders and dividers                */
+  --muted:       #637d94;   /* secondary labels, timestamps        */
+  --accent-tint: #e8f0f9;   /* table headers, active tab bg        */
+  --sig:         #b05c08;   /* significance markers (p < 0.05)     */
+  --error:       #c0392b;   /* error / danger                      */
+  --header-h:    44px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
+/* ═══════════════════════════════════════════════════════════════
+   Reset & base
+   ═══════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
+  font-family: 'IBM Plex Sans Arabic', system-ui, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+#root { min-height: 100vh; }
+
+h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.3; color: var(--ink); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Tabular numerals — all data-bearing elements
+   ═══════════════════════════════════════════════════════════════ */
+td, th, .tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* ═══════════════════════════════════════════════════════════════
+   Buttons  (scoped away from AG Grid and recharts internals)
+   ═══════════════════════════════════════════════════════════════ */
+button:not([class*="ag-"]):not([class*="recharts-"]) {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+button:not([class*="ag-"]):not([class*="recharts-"]):hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button:not([class*="ag-"]):not([class*="recharts-"]):disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+button:not([class*="ag-"]):not([class*="recharts-"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* ═══════════════════════════════════════════════════════════════
+   Inputs & selects
+   ═══════════════════════════════════════════════════════════════ */
+input:not([class*="ag-"]):not([type="checkbox"]):not([type="radio"]),
+select:not([class*="ag-"]) {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+  line-height: 1.4;
+  transition: border-color 0.12s;
+}
+input:not([class*="ag-"]):not([type="checkbox"]):focus,
+select:not([class*="ag-"]):focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-tint);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AG Grid — override alpine theme via CSS variables
+   ═══════════════════════════════════════════════════════════════ */
+.ag-theme-alpine {
+  --ag-font-family:                    'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --ag-font-size:                      13px;
+  --ag-background-color:               var(--surface);
+  --ag-foreground-color:               var(--ink);
+  --ag-secondary-foreground-color:     var(--muted);
+  --ag-disabled-foreground-color:      var(--muted);
+  --ag-header-background-color:        var(--accent-tint);
+  --ag-header-foreground-color:        var(--ink);
+  --ag-border-color:                   var(--border);
+  --ag-row-border-color:               var(--border);
+  --ag-odd-row-background-color:       #f6f9fc;
+  --ag-row-height:                     34px;
+  --ag-header-height:                  38px;
+  --ag-cell-horizontal-padding:        12px;
+  --ag-selected-row-background-color:  var(--accent-tint);
+  --ag-range-selection-border-color:   var(--accent);
+  --ag-input-border-color:             var(--border);
+  --ag-input-focus-border-color:       var(--accent);
+  --ag-checkbox-unchecked-color:       var(--muted);
+  --ag-checkbox-checked-color:         var(--accent);
+  --ag-header-column-separator-color:  var(--border);
+  --ag-header-column-separator-display: block;
+}
+.ag-theme-alpine .ag-header-cell-text { font-weight: 600; }
+.ag-theme-alpine .ag-root-wrapper     { border-color: var(--border); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Scrollbars
+   ═══════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: var(--page); }
+::-webkit-scrollbar-thumb        { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Splash / loading animations
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes sigma-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.05); opacity: 0.88; }
+}
+.sigma-splash-icon {
+  animation: sigma-pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sigma-splash-icon { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Mobile — touch targets, spacing, full-screen dialogs
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Minimum 44px tap target height — width is intentionally NOT forced
+     globally because it breaks flex tab bars. Individual components that
+     need wider tap targets set their own min-width inline. */
+  button:not([class*="ag-"]):not([class*="recharts-"]) {
+    min-height: 44px;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+  /* Larger inputs */
+  input:not([class*="ag-"]):not([type="checkbox"]):not([type="radio"]),
+  select:not([class*="ag-"]) {
+    padding: 10px 12px;
+    font-size: 15px;
   }
-}
-p {
-  margin: 0;
-}
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
+  /* Full-screen dialogs on mobile */
+  .sigma-dialog-overlay {
+    padding: 0 !important;
+    align-items: flex-start !important;
+  }
+  .sigma-dialog-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    border-radius: 0 !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    box-shadow: none !important;
+  }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  /* Larger checkbox touch targets inside variable pickers */
+  .sigma-var-item {
+    min-height: 44px !important;
+    padding: 10px 12px !important;
+  }
+  .sigma-var-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    flex-shrink: 0;
+  }
+
+  /* Prevent recharts axis labels from overflowing */
+  .recharts-cartesian-axis-tick-value {
+    font-size: 10px !important;
+  }
 }
