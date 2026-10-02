@@ -27,7 +27,7 @@ const cardStyle = {
 
 const fabStyle = {
   position: 'fixed',
-  insetBlockEnd: 72, // 56px bottom bar + 16px gap
+  insetBlockEnd: 'calc(var(--bottom-nav-h) + 16px + var(--safe-bottom))',
   insetInlineEnd: 20,
   width: 56,
   height: 56,
@@ -52,6 +52,8 @@ const fullScreenStyle = {
   display: 'flex',
   flexDirection: 'column',
   overflowY: 'auto',
+  paddingTop: 'var(--safe-top)',
+  paddingBottom: 'var(--safe-bottom)',
 };
 
 const editHeaderStyle = {

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { computeFrequencies } from '../../lib/stats/frequencies.js';
 import { apaFrequencies } from '../../lib/apaMethods.js';
 import useFilterStore from '../../store/filterStore.js';
@@ -43,7 +43,7 @@ export default function FrequenciesDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.frequencies);
       const _groups = getAnalysisCaseGroups(cases, activeFilter, variables, splitVar);
       for (const _group of _groups) {
         const cases = _group.cases;
@@ -59,7 +59,7 @@ export default function FrequenciesDialog({ onClose, onResultAdded, onHelp }) {
           const rows = await computeFrequencies(py, raw, variable.valueLabels ?? {});
           tables.push({
             title: `${t('analyze.frequencies')}: ${variable.label || variable.name}`,
-            columns: ['Value', 'Label', 'Frequency', 'Percent', 'Valid %', 'Cumulative %'],
+            columns: [t('table.value'), t('table.label'), t('table.frequency'), t('table.percent'), t('table.valid_pct'), t('table.cumulative_pct')],
             rows: rows.map((r) => [r.value, r.label, r.frequency, r.percent, r.validPercent, r.cumulativePercent]),
           });
         }
@@ -87,7 +87,7 @@ export default function FrequenciesDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[FrequenciesDialog] analysis error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

@@ -1,22 +1,10 @@
 import { useTranslation } from 'react-i18next';
 
-const STAGE_KEYS = {
-  data:     'loading.data',
-  engine:   'loading.engine',
-  packages: 'loading.packages',
-};
-
-export default function LoadingScreen({ stage = 'data' }) {
+export default function LoadingScreen() {
   const { t } = useTranslation();
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--page)',
-      gap: 16,
-      zIndex: 9999,
-    }}>
+    <div className="sigma-splash" role="status" aria-live="polite">
       <svg
         className="sigma-splash-icon"
         width="80" height="80"
@@ -38,7 +26,7 @@ export default function LoadingScreen({ stage = 'data' }) {
       </span>
 
       <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>
-        {t(STAGE_KEYS[stage] ?? 'loading.data')}
+        {t('loading.data')}
       </p>
     </div>
   );

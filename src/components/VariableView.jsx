@@ -1,15 +1,12 @@
-import { useState, useCallback, useMemo } from 'react';
+import { lazy, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AgGridReact } from 'ag-grid-react';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import useDatasetStore from '../store/datasetStore.js';
 import useIsMobile from '../hooks/useIsMobile.js';
 import ValueLabelsModal from './ValueLabelsModal.jsx';
 import MobileVariableView from './VariableView/MobileVariableView.jsx';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+const AgGridReact = lazy(() => import('../lib/agGridSetup.js').then((m) => ({ default: m.AgGridReact })));
+
 
 function ValueLabelsCellRenderer({ data, onOpen }) {
   const { t } = useTranslation();
@@ -35,60 +32,10 @@ function DeleteCellRenderer({ data, onDelete }) {
   );
 }
 
-function exportCodebook(variables, cases, t) {
-  const doc = new jsPDF();
-  const margin = 14;
-  let y = margin;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(31, 95, 166);
-  doc.text(t('codebook.title'), margin, y);
-  y += 7;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(100, 120, 140);
-  doc.text(`${t('codebook.generated')}: ${new Date().toLocaleString()} · ${variables.length} ${t('codebook.variables')}`, margin, y);
-  y += 6;
-  doc.setDrawColor(200, 214, 226);
-  doc.line(margin, y, 196, y);
-  y += 10;
-  doc.setTextColor(28, 43, 58);
-
-  for (const v of variables) {
-    if (y > doc.internal.pageSize.height - 50) { doc.addPage(); y = margin; }
-
-    const nullCount = cases.filter((c) => c.values[v.id] == null || c.values[v.id] === '').length;
-    const labelPairs = Object.entries(v.valueLabels ?? {})
-      .map(([val, lbl]) => `${val} = ${lbl}`).join('; ') || '—';
-    const missingStr = (v.missingValues ?? []).join(', ') || '—';
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text(v.name + (v.label ? `  —  ${v.label}` : ''), margin, y);
-    y += 6;
-    doc.setFont('helvetica', 'normal');
-
-    autoTable(doc, {
-      startY: y,
-      margin: { left: margin, right: margin },
-      head: [[t('codebook.col.property'), t('codebook.col.value')]],
-      body: [
-        [t('col.type'), t(`type.${v.type}`)],
-        [t('col.measure'), t(`measure.${v.measure}`)],
-        [t('col.valueLabels'), labelPairs],
-        [t('col.missingValues'), missingStr],
-        [t('codebook.nullCount'), `${nullCount} / ${cases.length}`],
-      ],
-      styles: { fontSize: 8.5 },
-      headStyles: { fillColor: [31, 95, 166] },
-      columnStyles: { 0: { cellWidth: 45, fontStyle: 'bold' } },
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
-  const dateStr = new Date().toISOString().slice(0, 10);
-  doc.save(`sigma-codebook-${dateStr}.pdf`);
+function exportCodebook(variables, cases, t, i18n) {
+  import('../lib/pdf/pdfExport.js')
+    .then((m) => m.exportCodebookPdf(variables, cases, { t, i18n }))
+    .catch(() => window.alert(t('results.pdfFontFailed')));
 }
 
 const sheetItem = {
@@ -181,7 +128,7 @@ export default function VariableView() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: `calc(100vh - var(--header-h)${isMobile ? ' - 56px' : ''})`,
+      height: `calc(100dvh - var(--header-h) - var(--safe-top)${isMobile ? ' - var(--bottom-nav-h) - var(--safe-bottom)' : ''})`,
     }}>
       {isMobile ? (
         <div style={{
@@ -214,11 +161,11 @@ export default function VariableView() {
                 style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.35)' }}
               />
               <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+                position: 'fixed', bottom: 0, insetInline: 0, zIndex: 401,
                 background: 'var(--surface)', borderRadius: '12px 12px 0 0',
-                paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: 'calc(var(--bottom-nav-h) + var(--safe-bottom))',
                 boxShadow: '0 -4px 24px rgba(0,0,0,0.18)',
-                maxHeight: '75vh', overflowY: 'auto',
+                maxHeight: '75dvh', overflowY: 'auto', overscrollBehavior: 'contain',
               }}>
                 <div style={{ padding: '14px 20px 10px', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>
@@ -238,7 +185,7 @@ export default function VariableView() {
                 <button type="button"
                   disabled={variables.length === 0}
                   style={{ ...sheetItem, opacity: variables.length === 0 ? 0.4 : 1, cursor: variables.length === 0 ? 'default' : 'pointer' }}
-                  onClick={() => { exportCodebook(variables, cases, t); setMoreOpen(false); }}>
+                  onClick={() => { exportCodebook(variables, cases, t, i18n); setMoreOpen(false); }}>
                   <span style={{ width: 22, flexShrink: 0 }}>↑</span>{t('codebook.exportButton')}
                 </button>
               </div>
@@ -265,7 +212,7 @@ export default function VariableView() {
             <button
               type="button"
               disabled={variables.length === 0}
-              onClick={() => exportCodebook(variables, cases, t)}
+              onClick={() => exportCodebook(variables, cases, t, i18n)}
               style={{ marginInlineStart: 'auto' }}
             >
               {t('codebook.exportButton')}
@@ -277,7 +224,6 @@ export default function VariableView() {
       {isMobile ? (
         <MobileVariableView
           variables={variables}
-          cases={cases}
           addVariable={addVariable}
           updateVariable={updateVariable}
           deleteVariable={deleteVariable}

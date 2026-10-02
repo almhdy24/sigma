@@ -1,74 +1,97 @@
 # Sigma — أداة التحليل الإحصائي
 
-**Sigma** is an offline-first, Arabic-friendly statistical analysis workbench that runs entirely in the browser. It is designed for medical students, researchers, and educators who need SPSS-style capabilities without installing native software.
+**Sigma** is an offline-first, Arabic-first statistical analysis workbench that runs entirely in the browser. It is designed for medical students, researchers, and educators who need SPSS-style capabilities without installing software. Data never leaves the device.
+
+> **بالعربية:** سيغما أداة تحليل إحصائي بأسلوب SPSS تعمل داخل المتصفح بالكامل، بالعربية والإنجليزية، على الجوال والحاسوب، ودون إنترنت بعد التنزيل الأول. بياناتك لا تغادر جهازك.
 
 ## Features
 
-- **Data entry** — Spreadsheet-style data grid with variable/case management, value labels, and missing-value handling
-- **Variable view** — Define variable types (numeric, string, categorical, date), measurement levels, and value labels
-- **Statistical procedures** — Descriptive statistics, Frequencies, Crosstabs (χ²), Pearson & Spearman Correlation, One-Sample / Independent / Paired T-Tests, One-Way ANOVA (+ Tukey HSD post-hoc), Linear Regression
-- **Chart builder** — Histogram, Bar chart, Scatter plot, Box-and-whisker plot with PNG export
-- **Results panel** — Formatted output tables, plain-text copy, PDF export
-- **Bilingual (Arabic / English)** — Full RTL layout when Arabic is active; the interface switches instantly at runtime
-- **PWA / offline-capable** — Installable as a Progressive Web App; once loaded, works without a network connection
+- **Data entry**: spreadsheet grid on desktop and touch-friendly case cards on phones; value labels, missing values, undo/redo
+- **Import / export**: CSV and Excel (`.xlsx`); CSV exports include a UTF-8 BOM so Excel shows Arabic correctly, and Excel exports use right-to-left sheets in Arabic
+- **Transform**: Compute, Recode, Select Cases, Split File
+- **Statistics**: Descriptives, Frequencies, Crosstabs (χ², Cramér's V), Pearson & Spearman correlation, one-sample / independent / paired t-tests, one-way ANOVA with Tukey HSD, linear regression with VIF, Cronbach's α, ROC curve, diagnostic-test accuracy, non-parametric alternatives, assumption checks
+- **Charts**: histogram, bar, scatter, box plot, ROC, with PNG export
+- **Results**: formatted tables, APA methods paragraphs, PDF export with full Arabic shaping and right-to-left layout
+- **Bilingual**: Arabic (RTL) and English (LTR), switchable at runtime; `<html lang/dir>` always follows the language
+- **Installable PWA**: works offline, prompts before applying updates, respects notches and home-indicator safe areas
 
-> **Note on Pyodide:** Statistical computations run via [Pyodide](https://pyodide.org) (Python in WebAssembly), which currently loads numpy, scipy, and statsmodels from the jsDelivr CDN on first use (~60 MB). An internet connection is required for that initial download; subsequent visits use the browser cache. Full offline self-hosting of Pyodide is planned for a future release.
+## How downloads work (on demand)
 
-## Screenshots
+Nothing heavy is downloaded up front:
 
-_TODO: add screenshots_
+| Part | When it is downloaded | Size (approx.) |
+|---|---|---|
+| App shell (UI, data entry) | first visit, then cached by the service worker | ~570 KB (~190 KB gzipped) |
+| Each screen / dialog / export library | the first time it is opened | 5–320 KB gzipped each |
+| Python core (Pyodide) | the first time any analysis runs | 13.8 MB |
+| NumPy | first reliability / ROC analysis | ~3.6 MB |
+| SciPy (+ OpenBLAS) | first t-test, ANOVA, correlation, regression, crosstabs, descriptives | ~15 MB |
 
-## Getting Started
+- Engine downloads show a **progress bar** (MB and %) with a **Cancel** button.
+- Everything downloaded is stored on the device and works offline afterwards.
+- **Analyze → "Download everything for offline use"** saves the whole engine and every screen in one go.
+- Python runs in a **Web Worker**, so the UI never freezes while SciPy installs or an analysis runs.
+- statsmodels/pandas (~20 MB) are no longer needed: Tukey HSD uses `scipy.stats.tukey_hsd` and regression uses NumPy OLS. Both are verified to match statsmodels exactly.
+
+The engine files are served from jsDelivr (Pyodide 0.27.0). The exact files each analysis needs are listed in [`src/lib/engine/manifest.js`](src/lib/engine/manifest.js), generated from the pinned `pyodide` package by `yarn engine:manifest`.
+
+## Getting started
 
 ```bash
-# Install dependencies
-yarn install
-
-# Start the development server
-yarn dev
-
-# Build for production
-yarn build
-
-# Preview the production build locally
-yarn preview
+yarn install      # install dependencies
+yarn dev          # start the dev server
+yarn lint         # ESLint
+yarn test         # unit + integration tests (Vitest)
+yarn build        # production build in dist/
+yarn preview      # serve the production build locally
 ```
 
-## Tech Stack
+The stats tests run each module's Python code with CPython + SciPy 1.14.1 (the version Pyodide ships). Install them with `pip install numpy==2.0.2 scipy==1.14.1`. Without them those tests are skipped. The engine-worker tests use the real Pyodide from `node_modules` and need no network.
 
-| Layer | Library / Tool |
+## Deployment
+
+Every push to `main` runs lint, tests and a build ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) and then deploys to **GitHub Pages**.
+
+One-time setup: in the repository go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. The site is then published at `https://<user>.github.io/<repo>/`.
+
+To host elsewhere (Netlify, Vercel, Cloudflare Pages, any static host), run `yarn build` and serve `dist/`. Set `BASE_PATH` when the app is not served from the domain root (e.g. `BASE_PATH=/sigma/ yarn build`).
+
+## Tech stack
+
+| Layer | Library / tool |
 |---|---|
-| UI framework | React 19 |
-| Build tool | Vite 8 + vite-plugin-pwa |
-| Data grid | AG Grid Community 36 |
+| UI | React 19 |
+| Build | Vite 8 (Rolldown) + vite-plugin-pwa (Workbox) |
+| Data grid | AG Grid Community (desktop only, lazy-loaded) |
 | Charts | Recharts 3 |
-| Statistics engine | Pyodide 0.27 (numpy, scipy, statsmodels) |
+| Statistics engine | Pyodide 0.27 (NumPy, SciPy) in a Web Worker |
 | Persistence | Dexie (IndexedDB) + Zustand |
 | i18n | i18next + react-i18next |
-| Typography | IBM Plex Sans Arabic (self-hosted via @fontsource) |
-| PDF export | jsPDF + jspdf-autotable |
+| Spreadsheets | read-excel-file / write-excel-file |
+| PDF | jsPDF + jspdf-autotable + bidi-js, IBM Plex Sans Arabic embedded |
+| Tests | Vitest |
 
-## Project Structure
+## Project structure
 
 ```
 src/
   components/
-    Analyze/        # Statistical procedure dialogs + shared modal styles
-    Charts/         # Chart components (Histogram, Bar, Scatter, Box)
-    Results/        # Results view and table rendering
-    DataView.jsx    # Case data grid
-    VariableView.jsx
-    ValueLabelsModal.jsx
-    Logo.jsx
-  db/               # Dexie schema + Zustand persistence middleware
-  i18n/             # Translation files (en.json, ar.json)
+    Analyze/        # analysis dialogs (each one a lazy chunk)
+    Engine/         # engine download progress + offline panel
+    Charts/ Results/ Transform/ Import/ Export/ Help/ Install/
+    LazyBoundary.jsx  # Suspense + recoverable error UI for lazy chunks
   lib/
-    pyodideLoader.js
-    stats/          # Statistical computation modules (one per procedure)
-  store/            # Zustand stores (datasetStore, resultsStore)
+    engine/         # manifest, download planner, cached downloader, worker
+    pyodideLoader.js# on-demand engine API used by the dialogs
+    stats/          # one module per procedure (Python run in the worker)
+    pdf/            # PDF export + Unicode bidi handling
+    charts/         # chart data preparation
+  store/            # Zustand stores (dataset, results, filter, engine)
+  i18n/             # ar.json, en.json
+tests/              # Vitest suites
+scripts/            # gen-engine-manifest.mjs
 ```
 
 ## License
 
-MIT © Elmahdi
-# sigma
+MIT © Elmahdi. IBM Plex Sans Arabic is © IBM Corp., licensed under the [SIL Open Font License 1.1](src/assets/fonts/OFL-IBM-Plex.txt).

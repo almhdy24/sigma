@@ -3,25 +3,6 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
-export function computeHistogramBins(values, binCount) {
-  const n = Math.max(1, Math.round(binCount));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (min === max) {
-    return [{ label: String(min), count: values.length }];
-  }
-  const w = (max - min) / n;
-  const bins = Array.from({ length: n }, (_, i) => ({
-    label: `${(min + i * w).toFixed(2)}–${(min + (i + 1) * w).toFixed(2)}`,
-    count: 0,
-  }));
-  for (const v of values) {
-    let i = Math.floor((v - min) / w);
-    if (i >= n) i = n - 1;
-    bins[i].count++;
-  }
-  return bins;
-}
 
 export default function HistogramChart({ bins, varName }) {
   const { t } = useTranslation();

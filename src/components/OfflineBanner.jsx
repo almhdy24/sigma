@@ -1,27 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export default function OfflineBanner({ isOnline }) {
   const { t } = useTranslation();
 
+  // Track connectivity transitions during render (no effect needed): going
+  // offline hides the "back online" note, reconnecting shows it briefly.
+  const [prevOnline, setPrevOnline] = useState(isOnline);
   const [showBackOnline, setShowBackOnline] = useState(false);
-  const timerRef      = useRef(null);
-  const wasOfflineRef = useRef(!isOnline); // true if we started offline
+  if (isOnline !== prevOnline) {
+    setPrevOnline(isOnline);
+    setShowBackOnline(isOnline);
+  }
 
   useEffect(() => {
-    if (!isOnline) {
-      // went offline (or was already offline on mount)
-      wasOfflineRef.current = true;
-      clearTimeout(timerRef.current);
-      setShowBackOnline(false);
-    } else if (wasOfflineRef.current) {
-      // reconnected after an offline period — show confirmation briefly
-      setShowBackOnline(true);
-      timerRef.current = setTimeout(() => setShowBackOnline(false), 3000);
-    }
-  }, [isOnline]);
-
-  useEffect(() => () => clearTimeout(timerRef.current), []);
+    if (!showBackOnline) return undefined;
+    const timer = setTimeout(() => setShowBackOnline(false), 3000);
+    return () => clearTimeout(timer);
+  }, [showBackOnline]);
 
   if (isOnline && !showBackOnline) return null;
 

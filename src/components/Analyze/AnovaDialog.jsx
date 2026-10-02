@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { extractValues } from '../../lib/stats/extractValues.js';
 import { computeOneWayAnova } from '../../lib/stats/anova.js';
 import { kruskalWallis } from '../../lib/stats/nonparametric.js';
@@ -84,7 +84,7 @@ export default function AnovaDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.anova);
       const _groups = getAnalysisCaseGroups(cases, activeFilter, variables, splitVar);
       for (const _group of _groups) {
         const cases = _group.cases;
@@ -148,7 +148,7 @@ export default function AnovaDialog({ onClose, onResultAdded, onHelp }) {
         } else if (sig) {
           tables.push({
             title: t('dialog.anova.postHocTitle'),
-            columns: ['Note'],
+            columns: [t('table.note')],
             rows: [[t('dialog.anova.postHocUnavailable')]],
           });
         }
@@ -163,7 +163,7 @@ export default function AnovaDialog({ onClose, onResultAdded, onHelp }) {
           const eta2Str = kw.eta2H == null ? '—' : `${FMT4(kw.eta2H)} (${etaMag(kw.eta2H)})`;
           tables.push({
             title: t('dialog.anova.kruskalTitle'),
-            columns: ['Statistic', 'Value'],
+            columns: [t('table.statistic'), t('table.value')],
             rows: [
               ['H', FMT4(kw.H)],
               ['df', kw.df],
@@ -174,7 +174,7 @@ export default function AnovaDialog({ onClose, onResultAdded, onHelp }) {
           });
           tables.push({
             title: t('dialog.anova.kruskalMedians'),
-            columns: [t('dialog.anova.col.group'), 'N', 'Median'],
+            columns: [t('dialog.anova.col.group'), 'N', t('table.median')],
             rows: (kw.groupMedians ?? []).map((g) => [g.label, g.n, FMT2(g.median)]),
           });
         }
@@ -191,7 +191,7 @@ export default function AnovaDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[AnovaDialog] analysis error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

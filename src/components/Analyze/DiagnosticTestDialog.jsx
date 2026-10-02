@@ -5,7 +5,7 @@ import useResultsStore from '../../store/resultsStore.js';
 import { computeDiagnosticStats } from '../../lib/stats/diagnostic.js';
 import { extractValues } from '../../lib/stats/extractValues.js';
 import {
-  overlay, modal, overlayClass, modalClass, dialogTitle, varList, varItem, footer,
+  overlay, modal, overlayClass, modalClass, dialogTitle, footer,
   btnPrimary, btnSecondary, inputSel, fieldLabel, errorMsg,
 } from './_dialogStyles.js';
 
@@ -66,7 +66,7 @@ export default function DiagnosticTestDialog({ onClose, onResultAdded, onHelp })
 
       const contingencyTable = {
         title: t('dialog.diagnostic.contingencyTitle'),
-        columns: ['', 'Ref +', 'Ref −', 'Total'],
+        columns: ['', t('table.ref_pos'), t('table.ref_neg'), t('table.total')],
         rows: [
           ['Test +', tp, fp, tp + fp],
           ['Test −', fn, tn, fn + tn],

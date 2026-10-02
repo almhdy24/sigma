@@ -1,5 +1,5 @@
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+// Export helpers. The CSV / XLSX libraries are imported on demand so they are
+// only downloaded when the user actually exports something.
 
 function dateStr() {
   return new Date().toISOString().slice(0, 10);
@@ -13,10 +13,18 @@ function triggerDownload(blob, filename) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Revoke on the next tick — some mobile browsers start the download async.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function exportDatasetAsCsv(variables, cases) {
+function toCell(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number' || typeof val === 'boolean' || val instanceof Date) return val;
+  return String(val);
+}
+
+export async function exportDatasetAsCsv(variables, cases) {
+  const { default: Papa } = await import('papaparse');
   const fields = variables.map(v => v.name);
   const data = cases.map(c => {
     const row = {};
@@ -27,42 +35,36 @@ export function exportDatasetAsCsv(variables, cases) {
     return row;
   });
   const csv = Papa.unparse({ fields, data });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  // The UTF-8 BOM makes Excel detect the encoding, so Arabic text is not garbled.
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
   triggerDownload(blob, `sigma-dataset-${dateStr()}.csv`);
 }
 
-export function exportDatasetAsXlsx(variables, cases) {
-  const wb = XLSX.utils.book_new();
+export async function exportDatasetAsXlsx(variables, cases, { rightToLeft = false } = {}) {
+  const { default: writeExcelFile } = await import('write-excel-file/browser');
 
-  // Sheet 1 — Data
-  const dataRows = cases.map(c => {
-    const row = {};
-    for (const v of variables) {
-      const val = c.values[v.id];
-      row[v.name] = val === null || val === undefined ? '' : val;
-    }
-    return row;
-  });
-  const dataWs = XLSX.utils.json_to_sheet(
-    dataRows.length ? dataRows : [{}],
-    { header: variables.map(v => v.name) },
-  );
-  XLSX.utils.book_append_sheet(wb, dataWs, 'Data');
+  const dataSheet = [
+    variables.map(v => v.name),
+    ...cases.map(c => variables.map(v => toCell(c.values[v.id]))),
+  ];
 
-  // Sheet 2 — Variables
-  const varRows = variables.map(v => ({
-    name: v.name,
-    label: v.label,
-    type: v.type,
-    measure: v.measure,
-    missingValues: (v.missingValues ?? []).join(','),
-    valueLabels: JSON.stringify(v.valueLabels ?? {}),
-  }));
-  const varWs = XLSX.utils.json_to_sheet(
-    varRows.length ? varRows : [{}],
-    { header: ['name', 'label', 'type', 'measure', 'missingValues', 'valueLabels'] },
-  );
-  XLSX.utils.book_append_sheet(wb, varWs, 'Variables');
+  const varHeader = ['name', 'label', 'type', 'measure', 'missingValues', 'valueLabels'];
+  const varSheet = [
+    varHeader,
+    ...variables.map(v => [
+      v.name,
+      v.label || null,
+      v.type,
+      v.measure,
+      (v.missingValues ?? []).join(',') || null,
+      JSON.stringify(v.valueLabels ?? {}),
+    ]),
+  ];
 
-  XLSX.writeFile(wb, `sigma-dataset-${dateStr()}.xlsx`);
+  const blob = await writeExcelFile([
+    { data: dataSheet, sheet: 'Data', stickyRowsCount: 1, rightToLeft },
+    { data: varSheet, sheet: 'Variables', stickyRowsCount: 1, rightToLeft },
+  ]).toBlob();
+
+  triggerDownload(blob, `sigma-dataset-${dateStr()}.xlsx`);
 }

@@ -45,25 +45,27 @@ _group_stats = [
     for _i in range(_k)
 ]
 
+# Tukey HSD post-hoc (scipy.stats.tukey_hsd — numerically identical to
+# statsmodels' pairwise_tukeyhsd, without the ~20 MB statsmodels/pandas
+# download). Pairs are ordered by sorted group label and meanDiff = B − A,
+# matching the previous statsmodels output.
 _post_hoc = None
-if _p_val < 0.05:
+if _p_val < 0.05 and _k >= 2:
     try:
-        from statsmodels.stats.multicomp import pairwise_tukeyhsd
+        from scipy.stats import tukey_hsd
         from itertools import combinations as _comb
-        _all_vals = np.concatenate(_gdata)
-        _all_lbls = np.concatenate([[_lbls[_i]] * len(_g) for _i, _g in enumerate(_gdata)])
-        _tukey = pairwise_tukeyhsd(_all_vals, _all_lbls, alpha=0.05)
-        _guniq = list(_tukey.groupsunique)
-        _pairs = [
-            {
-                'groupA': str(_guniq[_gi]),
-                'groupB': str(_guniq[_gj]),
-                'meanDiff': float(_tukey.meandiffs[_idx]),
-                'pValue': float(_tukey.pvalues[_idx]),
-                'significant': bool(_tukey.reject[_idx]),
-            }
-            for _idx, (_gi, _gj) in enumerate(_comb(range(len(_guniq)), 2))
-        ]
+        _order = sorted(range(_k), key=lambda _i: _lbls[_i])
+        _tukey = tukey_hsd(*[_gdata[_i] for _i in _order])
+        _pairs = []
+        for _a, _b in _comb(range(_k), 2):
+            _pv = float(_tukey.pvalue[_a, _b])
+            _pairs.append({
+                'groupA': _lbls[_order[_a]],
+                'groupB': _lbls[_order[_b]],
+                'meanDiff': float(np.mean(_gdata[_order[_b]]) - np.mean(_gdata[_order[_a]])),
+                'pValue': _pv,
+                'significant': bool(_pv < 0.05),
+            })
         _post_hoc = {'method': 'tukey', 'pairs': _pairs}
     except Exception:
         _post_hoc = None

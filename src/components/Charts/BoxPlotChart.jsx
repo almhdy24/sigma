@@ -1,29 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// ─── Statistics helpers ─────────────────────────────────────────────────────
-
-function quantile(sorted, p) {
-  const idx = (p / 100) * (sorted.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-}
-
-export function computeBoxStats(values) {
-  const sorted = [...values].filter((v) => v !== null).sort((a, b) => a - b);
-  if (sorted.length === 0) return null;
-  const q1 = quantile(sorted, 25);
-  const median = quantile(sorted, 50);
-  const q3 = quantile(sorted, 75);
-  const iqr = q3 - q1;
-  const lowerFence = q1 - 1.5 * iqr;
-  const upperFence = q3 + 1.5 * iqr;
-  const nonOutliers = sorted.filter((v) => v >= lowerFence && v <= upperFence);
-  const whiskerLow = nonOutliers.length > 0 ? nonOutliers[0] : sorted[0];
-  const whiskerHigh = nonOutliers.length > 0 ? nonOutliers[nonOutliers.length - 1] : sorted[sorted.length - 1];
-  const outliers = sorted.filter((v) => v < lowerFence || v > upperFence);
-  return { q1, median, q3, whiskerLow, whiskerHigh, outliers };
-}
+// Statistics helpers live in src/lib/charts/chartData.js
 
 // ─── Custom Box+Whisker SVG shape ────────────────────────────────────────────
 //
@@ -44,7 +21,6 @@ const BoxShape = (props) => {
 
   if (!height || height <= 0 || whiskerHigh === whiskerLow) {
     // Degenerate: single-value distribution — just draw a line
-    const cx = x + width / 2;
     return <line x1={x} y1={y} x2={x + width} y2={y} stroke="#1f5fa6" strokeWidth={2} />;
   }
 
@@ -115,37 +91,6 @@ const BoxTooltip = ({ active, payload }) => {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function buildBoxPlotData(groups) {
-  // groups = [{ name, values[] }]
-  const built = groups
-    .map(({ name, values }) => {
-      const stats = computeBoxStats(values);
-      if (!stats) return null;
-      const allVals = [stats.whiskerLow, stats.whiskerHigh, ...stats.outliers];
-      const absMin = Math.min(...allVals);
-      const absMax = Math.max(...allVals);
-      return {
-        name,
-        spacer: stats.whiskerLow,                   // invisible bar: 0 → whiskerLow
-        barRange: stats.whiskerHigh - stats.whiskerLow, // custom shape: whiskerLow → whiskerHigh
-        ...stats,
-        absMin,
-        absMax,
-      };
-    })
-    .filter(Boolean);
-
-  if (built.length === 0) return { plotData: [], yDomain: [0, 1] };
-
-  const globalMin = Math.min(...built.map((d) => d.absMin));
-  const globalMax = Math.max(...built.map((d) => d.absMax));
-  const pad = Math.max((globalMax - globalMin) * 0.08, 0.5);
-
-  return {
-    plotData: built,
-    yDomain: [globalMin - pad, globalMax + pad],
-  };
-}
 
 export default function BoxPlotChart({ plotData, yDomain, varName, groupVarName }) {
   return (

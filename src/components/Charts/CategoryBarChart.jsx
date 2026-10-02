@@ -3,20 +3,6 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
-export function computeCategoryFrequencies(values, valueLabels = {}) {
-  const counts = {};
-  for (const v of values) {
-    if (v === null) continue;
-    const key = String(v);
-    counts[key] = (counts[key] ?? 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
-    .map(([raw, count]) => ({
-      label: valueLabels[raw] ?? raw,
-      count,
-    }));
-}
 
 export default function CategoryBarChart({ data, varName }) {
   const { t } = useTranslation();

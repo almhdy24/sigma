@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import useResultsStore from '../../store/resultsStore.js';
 import ResultTable from './ResultTable.jsx';
 import ResultChart from './ResultChart.jsx';
 
 const PAGE_SIZE = 15;
 
-function formatTimestamp(ts) {
-  return new Date(ts).toLocaleString();
+function formatTimestamp(ts, locale) {
+  return new Date(ts).toLocaleString(locale);
 }
 
 function resultToPlainText(result) {
@@ -34,129 +32,18 @@ function resultToPlainText(result) {
   return lines.join('\n');
 }
 
-function exportSinglePdf(result) {
-  const doc = new jsPDF();
-  let y = 14;
-
-  doc.setFontSize(14);
-  doc.text(result.analysisType.toUpperCase(), 14, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.text(`Variables: ${result.variablesUsed.join(', ')}`, 14, y);
-  y += 6;
-  doc.text(`Date: ${formatTimestamp(result.timestamp)}`, 14, y);
-  y += 10;
-
-  for (const table of result.tables) {
-    if (table.title) {
-      doc.setFontSize(11);
-      doc.text(table.title, 14, y);
-      y += 6;
-    }
-    autoTable(doc, {
-      startY: y,
-      head: [table.columns],
-      body: table.rows.map((r) => r.map((c) => (c == null ? '—' : String(c)))),
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [31, 95, 166] },
-    });
-    y = doc.lastAutoTable.finalY + 8;
-  }
-
-  doc.setFontSize(10);
-  doc.text(result.interpretation, 14, y, { maxWidth: 180 });
-  y += doc.splitTextToSize(result.interpretation, 180).length * 5 + 6;
-  if (result.methodsParagraph) {
-    doc.setFontSize(8);
-    doc.setTextColor(100, 120, 140);
-    doc.text('Methods (APA format, English):', 14, y);
-    y += 5;
-    doc.text(doc.splitTextToSize(result.methodsParagraph, 180), 14, y);
-  }
-  doc.save(`result-${result.id.slice(0, 8)}.pdf`);
-}
-
-function exportAllPdf(results, t) {
-  const doc    = new jsPDF();
-  const pageH  = doc.internal.pageSize.height;
-  const margin = 14;
-  let y = margin;
-
-  // Report header
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(31, 95, 166);
-  doc.text(t('results.reportTitle'), margin, y);
-  y += 9;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(99, 125, 148);
-  doc.text(t('results.reportGenerated', { date: new Date().toLocaleString() }), margin, y);
-  y += 6;
-  doc.setDrawColor(200, 214, 226);
-  doc.line(margin, y, 196, y);
-  y += 12;
-  doc.setTextColor(28, 43, 58);
-
-  for (const result of results) {
-    if (y > pageH - 50) { doc.addPage(); y = margin; }
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text(result.analysisType.toUpperCase(), margin, y);
-    y += 6;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(99, 125, 148);
-    doc.text(
-      `${result.variablesUsed.join(', ')} · ${formatTimestamp(result.timestamp)}`,
-      margin, y,
-    );
-    y += 8;
-    doc.setTextColor(28, 43, 58);
-
-    for (const table of result.tables) {
-      if (y > pageH - 40) { doc.addPage(); y = margin; }
-      if (table.title) {
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text(table.title, margin, y);
-        y += 5;
-        doc.setFont('helvetica', 'normal');
-      }
-      autoTable(doc, {
-        startY: y,
-        head: [table.columns],
-        body: table.rows.map(r => r.map(c => (c == null ? '—' : String(c)))),
-        styles: { fontSize: 8.5 },
-        headStyles: { fillColor: [31, 95, 166] },
-        margin: { left: margin, right: margin },
-      });
-      y = doc.lastAutoTable.finalY + 6;
-    }
-
-    if (y > pageH - 30) { doc.addPage(); y = margin; }
-    doc.setFontSize(9);
-    doc.setTextColor(176, 92, 8);
-    const lines = doc.splitTextToSize(result.interpretation, 182);
-    doc.text(lines, margin, y);
-    y += lines.length * 4.5 + 14;
-    doc.setTextColor(28, 43, 58);
-  }
-
-  const dateStr = new Date().toISOString().slice(0, 10);
-  doc.save(`sigma-report-${dateStr}.pdf`);
-}
+const loadPdf = () => import('../../lib/pdf/pdfExport.js');
 
 export default function ResultsView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const results      = useResultsStore(s => s.results);
   const clearResults = useResultsStore(s => s.clearResults);
 
   const [search,   setSearch]   = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
-  useEffect(() => { setPageSize(PAGE_SIZE); }, [search]);
+  // Reset paging whenever the search changes (in the handler, not an effect)
+  const updateSearch = (value) => { setSearch(value); setPageSize(PAGE_SIZE); };
 
   const filtered = results.filter(r => {
     const q = search.trim().toLowerCase();
@@ -174,7 +61,7 @@ export default function ResultsView() {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 'calc(100vh - var(--header-h))',
+        height: 'calc(100dvh - var(--header-h) - var(--safe-top))',
         color: 'var(--muted)', fontSize: 13,
       }}>
         <p style={{ margin: 0 }}>{t('results.empty')}</p>
@@ -185,7 +72,7 @@ export default function ResultsView() {
   const handleClear = () => {
     if (window.confirm(t('results.confirmClear'))) {
       clearResults();
-      setSearch('');
+      updateSearch('');
     }
   };
 
@@ -199,7 +86,7 @@ export default function ResultsView() {
         <input
           type="search"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => updateSearch(e.target.value)}
           placeholder={t('results.search')}
           style={{ flex: '1 1 200px', minWidth: 0 }}
         />
@@ -207,7 +94,9 @@ export default function ResultsView() {
           <button
             type="button"
             style={{ fontSize: 13 }}
-            onClick={() => exportAllPdf(filtered.length ? filtered : results, t)}
+            onClick={() => loadPdf()
+              .then((m) => m.exportResultsReportPdf(filtered.length ? filtered : results, { t, i18n }))
+              .catch(() => window.alert(t('results.pdfFontFailed')))}
           >
             ↑ {t('results.exportAll')}
           </button>
@@ -258,7 +147,7 @@ export default function ResultsView() {
               {t(`analysis.${result.analysisType}`)}
             </strong>
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>
-              {formatTimestamp(result.timestamp)}
+              <bdi>{formatTimestamp(result.timestamp, i18n.language)}</bdi>
             </span>
             <span style={{ color: 'var(--muted)', fontSize: 12 }}>
               {result.variablesUsed.join(', ')}
@@ -274,7 +163,9 @@ export default function ResultsView() {
               <button
                 type="button"
                 style={{ fontSize: 12, padding: '2px 8px' }}
-                onClick={() => exportSinglePdf(result)}
+                onClick={() => loadPdf()
+                  .then((m) => m.exportResultPdf(result, { t, i18n }))
+                  .catch(() => window.alert(t('results.pdfFontFailed')))}
               >
                 {t('results.exportPdf')}
               </button>

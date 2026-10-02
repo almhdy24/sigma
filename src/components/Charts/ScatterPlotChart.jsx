@@ -2,15 +2,6 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
-export function computeScatterData(xValues, yValues) {
-  const points = [];
-  for (let i = 0; i < xValues.length; i++) {
-    if (xValues[i] !== null && yValues[i] !== null) {
-      points.push({ x: xValues[i], y: yValues[i] });
-    }
-  }
-  return points;
-}
 
 export default function ScatterPlotChart({ points, xName, yName }) {
   return (

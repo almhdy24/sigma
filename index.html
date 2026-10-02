@@ -1,16 +1,38 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Sigma — offline-first statistical analysis workbench. SPSS-style data entry, descriptive stats, t-tests, ANOVA, regression, crosstabs, and charts. Runs entirely in the browser." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Sigma — أداة تحليل إحصائي تعمل في المتصفح ودون إنترنت. إدخال بيانات بأسلوب SPSS، إحصاء وصفي، اختبارات t، تحليل التباين، الانحدار، والجداول المتقاطعة. بياناتك لا تغادر جهازك." />
+    <meta name="theme-color" content="#1f5fa6" />
+    <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Sigma" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Sigma — أداة التحليل الإحصائي" />
+    <meta property="og:description" content="تحليل إحصائي بأسلوب SPSS يعمل في المتصفح ودون إنترنت — بالعربية والإنجليزية." />
+    <meta property="og:image" content="%BASE_URL%icon-512.png" />
+    <meta property="og:locale" content="ar_AR" />
+    <meta property="og:locale:alternate" content="en_US" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <title>Sigma</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- The Python engine is fetched from jsDelivr on demand -->
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <title>Sigma — أداة التحليل الإحصائي</title>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 24px; text-align: center">
+        يحتاج Sigma إلى تفعيل JavaScript. — Sigma needs JavaScript to run.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

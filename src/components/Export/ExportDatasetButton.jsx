@@ -18,7 +18,7 @@ const menuItem = {
 };
 
 export default function ExportDatasetButton() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const variables = useDatasetStore(s => s.variables);
   const cases     = useDatasetStore(s => s.cases);
   const [open, setOpen] = useState(false);
@@ -29,8 +29,8 @@ export default function ExportDatasetButton() {
     const close = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
   }, [open]);
 
   const disabled = variables.length === 0 || cases.length === 0;
@@ -65,7 +65,7 @@ export default function ExportDatasetButton() {
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-tint)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             onClick={() => {
-              exportDatasetAsCsv(variables, cases);
+              exportDatasetAsCsv(variables, cases).catch(() => window.alert(t('export.failed')));
               setOpen(false);
             }}
           >
@@ -77,7 +77,8 @@ export default function ExportDatasetButton() {
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-tint)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             onClick={() => {
-              exportDatasetAsXlsx(variables, cases);
+              exportDatasetAsXlsx(variables, cases, { rightToLeft: i18n.dir() === 'rtl' })
+                .catch(() => window.alert(t('export.failed')));
               setOpen(false);
             }}
           >

@@ -12,10 +12,9 @@ export function initPersistence() {
     if (cancelled) return;
 
     const lang = row?.language ?? 'ar';
+    // i18n keeps <html lang/dir> in sync (see i18n.js)
     await i18n.changeLanguage(lang);
     if (cancelled) return;
-
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
 
     useDatasetStore.getState().hydrate({
       variables: row?.variables ?? [],

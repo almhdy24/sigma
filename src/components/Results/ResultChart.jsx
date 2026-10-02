@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import ROCChart from '../Charts/ROCChart.jsx';
 
 export default function ResultChart({ chartData }) {
