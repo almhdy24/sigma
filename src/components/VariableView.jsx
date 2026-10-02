@@ -1,11 +1,11 @@
-import { lazy, useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../store/datasetStore.js';
 import useIsMobile from '../hooks/useIsMobile.js';
 import ValueLabelsModal from './ValueLabelsModal.jsx';
 import MobileVariableView from './VariableView/MobileVariableView.jsx';
 
-const AgGridReact = lazy(() => import('../lib/agGridSetup.js').then((m) => ({ default: m.AgGridReact })));
+import DataGrid from './Grid/DataGrid.jsx';
 
 
 function ValueLabelsCellRenderer({ data, onOpen }) {
@@ -82,46 +82,41 @@ export default function VariableView() {
   const openModal = useCallback((data) => setModalVariableId(data.id), []);
   const closeModal = useCallback(() => setModalVariableId(null), []);
 
-  const onCellValueChanged = useCallback((params) => {
-    const { data, newValue } = params;
-    const colId = params.column.getColId();
-
+  const onEdit = useCallback((id, colId, value) => {
     if (colId === 'missingValues') {
-      const arr = String(newValue ?? '').split(',').map(s => s.trim()).filter(Boolean);
-      updateVariable(data.id, { missingValues: arr });
-    } else if (['name', 'label', 'type', 'measure'].includes(colId)) {
-      updateVariable(data.id, { [colId]: newValue });
+      const arr = String(value ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      updateVariable(id, { missingValues: arr });
+    } else if (colId === 'name') {
+      const name = String(value).trim();
+      if (/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) updateVariable(id, { name });
+      else window.alert(t('col.nameInvalid'));
+    } else if (['label', 'type', 'measure'].includes(colId)) {
+      updateVariable(id, { [colId]: value });
     }
-  }, [updateVariable]);
+  }, [updateVariable, t]);
 
-  const columnDefs = useMemo(() => [
-    { colId: 'name', field: 'name', headerName: t('col.name'), editable: true, width: 130 },
-    { colId: 'label', field: 'label', headerName: t('col.label'), editable: true, flex: 1 },
+  const columns = useMemo(() => [
+    { id: 'name', header: t('col.name'), width: 140 },
+    { id: 'label', header: t('col.label'), flex: 2, minWidth: 160 },
     {
-      colId: 'type', field: 'type', headerName: t('col.type'), editable: true, width: 130,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: ['numeric', 'string', 'categorical', 'date'] },
-      valueFormatter: (p) => t(`type.${p.value}`) ?? p.value,
+      id: 'type', header: t('col.type'), width: 130, type: 'select',
+      options: ['numeric', 'string', 'categorical', 'date'].map((v) => ({ value: v, label: t(`type.${v}`) })),
     },
     {
-      colId: 'measure', field: 'measure', headerName: t('col.measure'), editable: true, width: 130,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: ['nominal', 'ordinal', 'scale'] },
-      valueFormatter: (p) => t(`measure.${p.value}`) ?? p.value,
+      id: 'measure', header: t('col.measure'), width: 130, type: 'select',
+      options: ['nominal', 'ordinal', 'scale'].map((v) => ({ value: v, label: t(`measure.${v}`) })),
     },
     {
-      colId: 'valueLabels', headerName: t('col.valueLabels'), editable: false, width: 130,
-      cellRenderer: ValueLabelsCellRenderer,
-      cellRendererParams: { onOpen: openModal },
+      id: 'valueLabels', header: t('col.valueLabels'), width: 150,
+      render: (row) => <ValueLabelsCellRenderer data={row} onOpen={openModal} />,
     },
     {
-      colId: 'missingValues', headerName: t('col.missingValues'), editable: true, flex: 1,
-      valueGetter: (p) => (p.data.missingValues ?? []).join(', '),
+      id: 'missingValues', header: t('col.missingValues'), flex: 1, minWidth: 140,
+      getValue: (row) => (row.missingValues ?? []).join(', '),
     },
     {
-      colId: '_delete', headerName: '', editable: false, sortable: false, filter: false, width: 52,
-      cellRenderer: DeleteCellRenderer,
-      cellRendererParams: { onDelete: handleDelete },
+      id: '_delete', header: '', width: 48,
+      render: (row) => <DeleteCellRenderer data={row} onDelete={handleDelete} />,
     },
   ], [t, openModal, handleDelete]);
 
@@ -231,16 +226,7 @@ export default function VariableView() {
           onOpenValueLabels={(id) => setModalVariableId(id)}
         />
       ) : (
-        <div className="ag-theme-alpine" style={{ flex: 1, minHeight: 0 }}>
-          <AgGridReact
-            key={i18n.language}
-            rowData={variables}
-            columnDefs={columnDefs}
-            onCellValueChanged={onCellValueChanged}
-            getRowId={(p) => p.data.id}
-            enableRtl={i18n.language === 'ar'}
-          />
-        </div>
+        <DataGrid label={t('variable')} rows={variables} columns={columns} onEdit={onEdit} rowNumbers />
       )}
 
       {modalVariable && (

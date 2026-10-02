@@ -9,7 +9,7 @@ import { detectOutliersIQR } from '../lib/stats/outliers.js';
 import LazyBoundary from './LazyBoundary.jsx';
 import { exportDatasetAsCsv, exportDatasetAsXlsx } from '../lib/exportDataset.js';
 
-const AgGridReact = lazy(() => import('../lib/agGridSetup.js').then((m) => ({ default: m.AgGridReact })));
+import DataGrid from './Grid/DataGrid.jsx';
 
 // Dialogs are separate chunks (Compute pulls in mathjs, Import the file parsers).
 const ImportDialog          = lazy(() => import('./Import/ImportDialog.jsx'));
@@ -86,48 +86,38 @@ export default function DataView() {
     if (window.confirm(t('confirmDeleteCase'))) deleteCase(id);
   }, [deleteCase, t]);
 
-  const onCellValueChanged = useCallback((params) => {
-    const caseId = params.data.id;
-    const varId  = params.column.getColId();
+  const onEdit = useCallback((caseId, varId, raw) => {
     const variable = variables.find(v => v.id === varId);
     if (!variable) return;
-
-    let value = params.newValue;
-    if (variable.type === 'numeric') {
-      const n = Number(params.newValue);
-      value = (
-        params.newValue === null ||
-        params.newValue === undefined ||
-        params.newValue === '' ||
-        isNaN(n)
-      ) ? null : n;
+    let value = raw === '' ? null : raw;
+    if (variable.type === 'numeric' && value !== null) {
+      const n = Number(String(value).trim().replace(',', '.'));
+      value = Number.isFinite(n) ? n : null;
     }
     updateCell(caseId, varId, value);
   }, [variables, updateCell]);
 
-  const columnDefs = useMemo(() => {
-    const varCols = variables.map(v => ({
-      colId: v.id,
-      field: v.id,
-      headerName: v.label || v.name,
-      editable: true,
-      cellEditor: v.type === 'numeric' ? 'agNumberCellEditor' : 'agTextCellEditor',
-    }));
-
-    return [
-      ...varCols,
-      {
-        colId: '_deleteCase',
-        headerName: '',
-        editable: false,
-        sortable: false,
-        filter: false,
-        width: 52,
-        cellRenderer: DeleteCaseCellRenderer,
-        cellRendererParams: { onDelete: handleDeleteCase },
-      },
-    ];
-  }, [variables, handleDeleteCase]);
+  const columns = useMemo(() => [
+    ...variables.map(v => {
+      const labels = v.valueLabels ?? {};
+      const hasLabels = Object.keys(labels).length > 0;
+      return {
+        id: v.id,
+        header: v.label || v.name,
+        type: v.type === 'numeric' ? 'number' : 'text',
+        minWidth: 110,
+        format: hasLabels
+          ? (val) => (val == null || val === '' ? '' : labels[val] != null ? `${val} (${labels[val]})` : val)
+          : undefined,
+      };
+    }),
+    {
+      id: '_deleteCase',
+      header: '',
+      width: 48,
+      render: (row) => <DeleteCaseCellRenderer data={row} onDelete={handleDeleteCase} />,
+    },
+  ], [variables, handleDeleteCase]);
 
   if (variables.length === 0) {
     return (
@@ -339,16 +329,14 @@ export default function DataView() {
           t={t}
         />
       ) : (
-        <div className="ag-theme-alpine" style={{ flex: 1, minHeight: 0 }}>
-          <AgGridReact
-            key={i18n.language}
-            rowData={rowData}
-            columnDefs={columnDefs}
-            onCellValueChanged={onCellValueChanged}
-            getRowId={(p) => p.data.id}
-            enableRtl={i18n.language === 'ar'}
-          />
-        </div>
+        <DataGrid
+          label={t('data')}
+          rows={rowData}
+          columns={columns}
+          onEdit={onEdit}
+          rowNumbers
+          emptyText={t('dataGrid.empty', { defaultValue: '' })}
+        />
       )}
 
       {importOpen && (

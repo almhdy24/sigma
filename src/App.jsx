@@ -2,6 +2,7 @@ import { lazy, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { initPersistence } from './db/persistMiddleware.js';
 import { initEngine } from './lib/pyodideLoader.js';
+import { changeLanguage, loadHelpStrings } from './i18n/i18n.js';
 import useDatasetStore from './store/datasetStore.js';
 import useIsMobile from './hooks/useIsMobile.js';
 import useOnlineStatus from './hooks/useOnlineStatus.js';
@@ -21,14 +22,14 @@ const VariableView = lazy(() => import('./components/VariableView.jsx'));
 const AnalyzeMenu  = lazy(() => import('./components/Analyze/AnalyzeMenu.jsx'));
 const ResultsView  = lazy(() => import('./components/Results/ResultsView.jsx'));
 const ChartsView   = lazy(() => import('./components/Charts/ChartsView.jsx'));
-const HelpPage     = lazy(() => import('./components/Help/HelpPage.jsx'));
+const HelpPage     = lazy(() => Promise.all([import('./components/Help/HelpPage.jsx'), loadHelpStrings()]).then(([m]) => m));
 
 const TABS = ['data', 'variable', 'analyze', 'results', 'charts', 'help'];
 
 const TAB_ICONS = { data: '⊞', variable: '≡', analyze: 'Σ', results: '◈', charts: '↗', help: '?' };
 
 export default function App() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const isLoaded    = useDatasetStore((s) => s.isLoaded);
   const language    = useDatasetStore((s) => s.language);
   const setLanguage = useDatasetStore((s) => s.setLanguage);
@@ -59,8 +60,7 @@ export default function App() {
   // <html lang/dir> follow i18n (see i18n.js); the store persists the choice.
   const toggleLanguage = () => {
     const next = language === 'ar' ? 'en' : 'ar';
-    i18n.changeLanguage(next);
-    setLanguage(next);
+    changeLanguage(next).then(() => setLanguage(next));
   };
 
   const showLoading = !isLoaded || !minTimerDone;

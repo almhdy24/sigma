@@ -1,11 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource/ibm-plex-sans-arabic/300.css'
+// Two weights only: 500 renders with 400 and 700 with 600 (nearest match).
 import '@fontsource/ibm-plex-sans-arabic/400.css'
-import '@fontsource/ibm-plex-sans-arabic/500.css'
 import '@fontsource/ibm-plex-sans-arabic/600.css'
 import './index.css'
-import './i18n/i18n.js'
+import { loadInitialLanguage } from './i18n/i18n.js'
 import App from './App.jsx'
 
 // A lazily-loaded chunk can disappear after a new deployment (its hash
@@ -22,6 +21,9 @@ window.addEventListener('vite:preloadError', (event) => {
 })
 // Allow another recovery reload later in this session once the app is up.
 setTimeout(() => { try { sessionStorage.removeItem('sigma-preload-reload') } catch { /* ignore */ } }, 10_000)
+
+// Fetch only the active language's strings before the first render.
+await loadInitialLanguage()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

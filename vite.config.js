@@ -1,4 +1,4 @@
-import react from '@vitejs/plugin-react'
+import preact from '@preact/preset-vite'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { PYODIDE_CDN, PYODIDE_VERSION } from './src/lib/engine/manifest.js'
@@ -34,6 +34,11 @@ function offlineAssetsPlugin(shared) {
       Object.values(bundle)
         .filter((c) => c.type === 'chunk' && c.isEntry && !c.fileName.includes('worker'))
         .forEach((c) => visit(c.fileName))
+      // UI strings for both languages are tiny and needed offline: precache
+      // them too (only the active one is fetched at start-up).
+      Object.values(bundle)
+        .filter((c) => c.type === 'chunk' && /[\\/]src[\\/]i18n[\\/]locales[\\/]/.test(c.facadeModuleId ?? ''))
+        .forEach((c) => visit(c.fileName))
 
       shared.initial = initial
       const lazy = Object.keys(bundle)
@@ -58,14 +63,16 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             // Shared by every screen; a stable chunk keeps the HTTP/SW cache warm across releases.
-            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'preact', test: /node_modules[\\/]preact[\\/]/ },
           ],
         },
       },
     },
   },
   plugins: [
-    react(),
+    // Preact (~11 KB) with React compatibility instead of React (~70 KB gzipped).
+    // `react` / `react-dom` imports — ours and libraries' — are aliased to preact/compat.
+    preact({ prefreshEnabled: true }),
     offlineAssetsPlugin(shared),
     VitePWA({
       // Ask before activating a new version so an update never reloads the

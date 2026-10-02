@@ -114,6 +114,20 @@ const useDatasetStore = create((set, get) => ({
     _pushHist(before, after, set);
   },
 
+  /** Set one variable's value for many cases in a single step (one undo entry). */
+  setColumn: (variableId, valuesByCaseId) => {
+    const before = _snapshot(get());
+    set(state => ({
+      cases: state.cases.map(c =>
+        valuesByCaseId.has(c.id)
+          ? { ...c, values: { ...c.values, [variableId]: valuesByCaseId.get(c.id) } }
+          : c
+      ),
+    }));
+    const after = _snapshot(get());
+    _pushHist(before, after, set);
+  },
+
   deleteCase: (id) => {
     const before = _snapshot(get());
     set(state => ({ cases: state.cases.filter(c => c.id !== id) }));
