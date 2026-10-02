@@ -1,7 +1,7 @@
 import db from './db.js';
 import useDatasetStore from '../store/datasetStore.js';
 import useResultsStore from '../store/resultsStore.js';
-import { changeLanguage } from '../i18n/i18n.js';
+import i18n, { changeLanguage } from '../i18n/i18n.js';
 
 const SAVE_DELAY = 500;
 const MAX_SAVED_RESULTS = 200;
@@ -46,7 +46,8 @@ export function initPersistence() {
     ]);
     if (cancelled) return;
 
-    const lang = row?.language ?? 'ar';
+    // No saved dataset yet → keep the language chosen at start-up (i18n.js).
+    const lang = row?.language ?? i18n.language;
     // i18n keeps <html lang/dir> in sync (see i18n.js)
     await changeLanguage(lang);
     if (cancelled) return;

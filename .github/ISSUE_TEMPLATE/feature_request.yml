@@ -1,0 +1,20 @@
+name: 💡 Feature request / اقتراح ميزة
+description: Suggest a new analysis, chart or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you need? / ما الذي تحتاجه؟
+      description: Describe the problem or the statistical procedure you'd like.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How should it work? / كيف تتصوّرها؟
+  - type: textarea
+    id: refs
+    attributes:
+      label: References / مراجع
+      description: SPSS menu, R function, textbook or paper, if relevant.

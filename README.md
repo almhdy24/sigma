@@ -1,97 +1,103 @@
-# Sigma — أداة التحليل الإحصائي
+<div align="center">
 
-**Sigma** is an offline-first, Arabic-first statistical analysis workbench that runs entirely in the browser. It is designed for medical students, researchers, and educators who need SPSS-style capabilities without installing software. Data never leaves the device.
+<img src="public/icon-512.png" width="96" alt="Sigma logo">
 
-> **بالعربية:** سيغما أداة تحليل إحصائي بأسلوب SPSS تعمل داخل المتصفح بالكامل، بالعربية والإنجليزية، على الجوال والحاسوب، ودون إنترنت بعد التنزيل الأول. بياناتك لا تغادر جهازك.
+# Sigma · سيغما
+
+**SPSS-style statistics that run entirely on your phone or computer: Arabic-first, offline, private, and very light.**
+
+**تحليل إحصائي بأسلوب SPSS يعمل بالكامل على جوالك أو حاسوبك: بالعربية، دون إنترنت، بخصوصية تامة، وخفيف جداً.**
+
+[![CI](https://github.com/almhdy24/sigma/actions/workflows/ci.yml/badge.svg)](https://github.com/almhdy24/sigma/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8.svg)](#install)
+
+[**Open the app · افتح التطبيق**](https://sigma.almhdy24.com) ·
+[User guide · دليل المستخدم](docs/user-guide.md) ·
+[English guide](docs/user-guide.en.md) ·
+[Contribute](CONTRIBUTING.md)
+
+</div>
+
+<p align="center">
+  <img src="public/screenshots/phone-welcome.png" width="200" alt="Welcome screen">
+  <img src="public/screenshots/phone-analyze.png" width="200" alt="Analyses">
+  <img src="public/screenshots/phone-results.png" width="200" alt="Results with chart">
+</p>
+<p align="center">
+  <img src="docs/images/desktop-charts-en.png" width="720" alt="Box plot on desktop">
+</p>
+
+## بالعربية
+
+سيغما أداة مجانية ومفتوحة المصدر لطلاب الطب والباحثين والمعلّمين:
+
+- **إدخال البيانات** بأسلوب SPSS، واستيراد وتصدير CSV و Excel.
+- **التحليلات:** الإحصاء الوصفي، جداول التكرار، الجداول التقاطعية (كاي تربيع)، الارتباط، اختبارات t، تحليل التباين مع توكي، الانحدار الخطي، ألفا كرونباخ، منحنى ROC، الاختبارات التشخيصية، والبدائل اللامعلمية مع فحص الافتراضات.
+- **رسوم بيانية، وفقرة منهجية بأسلوب APA، وتصدير PDF بالعربية.**
+- **بياناتك لا تغادر جهازك.** لا حسابات، ولا إعلانات، ولا تتبّع.
+- **خفيف:** الواجهة حوالي 60 KB مضغوطة، وكل جزء يُنزَّل عند الحاجة فقط مع شريط تقدّم.
+- **يعمل دون إنترنت** ويُثبَّت كتطبيق على أندرويد وآيفون والحاسوب، وقريباً على Google Play.
+
+ابدأ بزر **«جرّب ببيانات مثال»** لتجربة كل شيء في ثوانٍ. التفاصيل في [دليل المستخدم](docs/user-guide.md).
 
 ## Features
 
-- **Data entry**: spreadsheet grid on desktop and touch-friendly case cards on phones; value labels, missing values, undo/redo
-- **Import / export**: CSV and Excel (`.xlsx`); CSV exports include a UTF-8 BOM so Excel shows Arabic correctly, and Excel exports use right-to-left sheets in Arabic
-- **Transform**: Compute, Recode, Select Cases, Split File
-- **Statistics**: Descriptives, Frequencies, Crosstabs (χ², Cramér's V), Pearson & Spearman correlation, one-sample / independent / paired t-tests, one-way ANOVA with Tukey HSD, linear regression with VIF, Cronbach's α, ROC curve, diagnostic-test accuracy, non-parametric alternatives, assumption checks
-- **Charts**: histogram, bar, scatter, box plot, ROC, with PNG export
-- **Results**: formatted tables, APA methods paragraphs, PDF export with full Arabic shaping and right-to-left layout
-- **Bilingual**: Arabic (RTL) and English (LTR), switchable at runtime; `<html lang/dir>` always follows the language
-- **Installable PWA**: works offline, prompts before applying updates, respects notches and home-indicator safe areas
+| | |
+|---|---|
+| **Data** | Desktop spreadsheet grid and touch-friendly cards on phones; variable types, value labels, missing values, undo/redo; CSV and Excel import/export |
+| **Transform** | Compute (safe formulas, missing values stay missing), Recode, Select Cases, Split File |
+| **Analyses** | Descriptives, Frequencies, Crosstabs (χ², Cramér's V), Pearson and Spearman, t-tests (one-sample, independent, paired), one-way ANOVA with Tukey HSD, linear regression with VIF, Cronbach's α, ROC/AUC, diagnostic accuracy, Mann–Whitney, Wilcoxon, Kruskal–Wallis, Shapiro–Wilk, Levene |
+| **Output** | Formatted tables, SVG charts (PNG export), APA methods paragraphs, PDF reports with correct Arabic shaping and bidi |
+| **Languages** | Arabic (RTL) and English, switchable at any time |
+| **Privacy** | Everything stays in IndexedDB on the device; no backend, no accounts, no analytics ([policy](public/privacy.html)) |
 
-## How downloads work (on demand)
+## Fast and light by design
 
-Nothing heavy is downloaded up front:
-
-| Part | When it is downloaded | Size (approx.) |
+| What | Size (gzipped) | When it downloads |
 |---|---|---|
-| App shell (UI, data entry) | first visit, then cached by the service worker | ~570 KB (~190 KB gzipped) |
-| Each screen / dialog / export library | the first time it is opened | 5–320 KB gzipped each |
-| Python core (Pyodide) | the first time any analysis runs | 13.8 MB |
-| NumPy | first reliability / ROC analysis | ~3.6 MB |
-| SciPy (+ OpenBLAS) | first t-test, ANOVA, correlation, regression, crosstabs, descriptives | ~15 MB |
+| App shell (UI, data entry, active language) | about 50 KB of JS + 9 KB CSS | first visit; then works offline |
+| Each screen, dialog or exporter | 1–15 KB | first time it's opened |
+| PDF export (jsPDF + Arabic fonts) | about 350 KB | first PDF export |
+| Python core (Pyodide) | 13.8 MB | first analysis |
+| NumPy / SciPy | 3.6 MB / 15 MB | first analysis that needs them |
 
-- Engine downloads show a **progress bar** (MB and %) with a **Cancel** button.
-- Everything downloaded is stored on the device and works offline afterwards.
-- **Analyze → "Download everything for offline use"** saves the whole engine and every screen in one go.
-- Python runs in a **Web Worker**, so the UI never freezes while SciPy installs or an analysis runs.
-- statsmodels/pandas (~20 MB) are no longer needed: Tukey HSD uses `scipy.stats.tukey_hsd` and regression uses NumPy OLS. Both are verified to match statsmodels exactly.
+- The engine downloads show a **progress bar with cancel**, and are kept for offline use.
+- Python runs in a **Web Worker**, so the UI never freezes.
+- Built with **Preact** plus a small hand-written grid, SVG charts and formula engine instead of React, AG Grid, Recharts and mathjs. That took the initial download from 3.75 MB to under 200 KB.
 
-The engine files are served from jsDelivr (Pyodide 0.27.0). The exact files each analysis needs are listed in [`src/lib/engine/manifest.js`](src/lib/engine/manifest.js), generated from the pinned `pyodide` package by `yarn engine:manifest`.
+## Install
 
-## Getting started
+- **Web:** https://sigma.almhdy24.com
+- **Android:** Chrome → ⋮ → *Install app*. Google Play: coming soon ([how it's packaged](docs/google-play.md)).
+- **iPhone:** Safari → Share → *Add to Home Screen*.
+- **Desktop:** the install icon in Chrome/Edge's address bar.
+
+## Development
 
 ```bash
-yarn install      # install dependencies
-yarn dev          # start the dev server
+yarn install
+yarn dev          # dev server
 yarn lint         # ESLint
-yarn test         # unit + integration tests (Vitest)
-yarn build        # production build in dist/
-yarn preview      # serve the production build locally
+yarn test         # Vitest (stats tests need: pip install numpy==2.0.2 scipy==1.14.1)
+yarn build        # production build → dist/
+yarn preview      # serve the build
 ```
 
-The stats tests run each module's Python code with CPython + SciPy 1.14.1 (the version Pyodide ships). Install them with `pip install numpy==2.0.2 scipy==1.14.1`. Without them those tests are skipped. The engine-worker tests use the real Pyodide from `node_modules` and need no network.
+Read [docs/architecture.md](docs/architecture.md) before larger changes.
 
-## Deployment
-
-Every push to `main` runs lint, tests and a build ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) and then deploys to **GitHub Pages**.
-
-One-time setup: in the repository go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. The site is then published at `https://<user>.github.io/<repo>/`.
-
-To host elsewhere (Netlify, Vercel, Cloudflare Pages, any static host), run `yarn build` and serve `dist/`. Set `BASE_PATH` when the app is not served from the domain root (e.g. `BASE_PATH=/sigma/ yarn build`).
+| Doc | |
+|---|---|
+| [User guide (AR)](docs/user-guide.md) · [(EN)](docs/user-guide.en.md) | How to use Sigma |
+| [Architecture](docs/architecture.md) | Code layout, engine, caching, RTL |
+| [Deployment](docs/deployment.md) | Vercel + `sigma.almhdy24.com` (Cloudflare DNS), GitHub Pages, other hosts |
+| [Google Play](docs/google-play.md) | Packaging the PWA as a TWA with Bubblewrap; store listing |
+| [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md) | |
 
 ## Tech stack
 
-| Layer | Library / tool |
-|---|---|
-| UI | React 19 |
-| Build | Vite 8 (Rolldown) + vite-plugin-pwa (Workbox) |
-| Data grid | AG Grid Community (desktop only, lazy-loaded) |
-| Charts | Recharts 3 |
-| Statistics engine | Pyodide 0.27 (NumPy, SciPy) in a Web Worker |
-| Persistence | Dexie (IndexedDB) + Zustand |
-| i18n | i18next + react-i18next |
-| Spreadsheets | read-excel-file / write-excel-file |
-| PDF | jsPDF + jspdf-autotable + bidi-js, IBM Plex Sans Arabic embedded |
-| Tests | Vitest |
-
-## Project structure
-
-```
-src/
-  components/
-    Analyze/        # analysis dialogs (each one a lazy chunk)
-    Engine/         # engine download progress + offline panel
-    Charts/ Results/ Transform/ Import/ Export/ Help/ Install/
-    LazyBoundary.jsx  # Suspense + recoverable error UI for lazy chunks
-  lib/
-    engine/         # manifest, download planner, cached downloader, worker
-    pyodideLoader.js# on-demand engine API used by the dialogs
-    stats/          # one module per procedure (Python run in the worker)
-    pdf/            # PDF export + Unicode bidi handling
-    charts/         # chart data preparation
-  store/            # Zustand stores (dataset, results, filter, engine)
-  i18n/             # ar.json, en.json
-tests/              # Vitest suites
-scripts/            # gen-engine-manifest.mjs
-```
+Preact 10 · Vite 8 (Rolldown) · Workbox (vite-plugin-pwa) · Pyodide 0.27 (NumPy, SciPy) in a Web Worker · Zustand · i18next · jsPDF + bidi-js · read/write-excel-file · Papa Parse · Vitest
 
 ## License
 
-MIT © Elmahdi. IBM Plex Sans Arabic is © IBM Corp., licensed under the [SIL Open Font License 1.1](src/assets/fonts/OFL-IBM-Plex.txt).
+[MIT](LICENSE) © Elmahdi. IBM Plex Sans Arabic © IBM Corp., [SIL Open Font License 1.1](src/assets/fonts/OFL-IBM-Plex.txt).

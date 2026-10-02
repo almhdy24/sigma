@@ -38,7 +38,11 @@ export default function App() {
   const isOnline  = useOnlineStatus();
   const { showBanner, isIos, install, dismiss } = usePwaInstall();
 
-  const [activeTab,    setActiveTab]    = useState('data');
+  // Deep links / PWA shortcuts: ?tab=analyze
+  const [activeTab,    setActiveTab]    = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return TABS.includes(tab) ? tab : 'data';
+  });
   const [helpAnchor,   setHelpAnchor]   = useState(null);
   const [minTimerDone, setMinTimerDone] = useState(false);
 
@@ -127,7 +131,7 @@ export default function App() {
             {/* ── Tab content ─────────────────────────────────────────── */}
             <main className="sigma-main">
               <LazyBoundary key={activeTab}>
-                {activeTab === 'data'      && <DataView />}
+                {activeTab === 'data'      && <DataView onStartEmpty={() => setActiveTab('variable')} />}
                 {activeTab === 'variable'  && <VariableView />}
                 {activeTab === 'analyze'   && (
                   <AnalyzeMenu
@@ -136,7 +140,7 @@ export default function App() {
                     isOnline={isOnline}
                   />
                 )}
-                {activeTab === 'results'   && <ResultsView />}
+                {activeTab === 'results'   && <ResultsView onGoToAnalyze={() => setActiveTab('analyze')} />}
                 {activeTab === 'charts'    && <ChartsView />}
                 {activeTab === 'help'      && <HelpPage anchor={helpAnchor} />}
               </LazyBoundary>

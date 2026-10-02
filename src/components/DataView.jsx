@@ -10,6 +10,7 @@ import LazyBoundary from './LazyBoundary.jsx';
 import { exportDatasetAsCsv, exportDatasetAsXlsx } from '../lib/exportDataset.js';
 
 import DataGrid from './Grid/DataGrid.jsx';
+import Welcome from './Welcome/Welcome.jsx';
 
 // Dialogs are separate chunks (Compute pulls in mathjs, Import the file parsers).
 const ImportDialog          = lazy(() => import('./Import/ImportDialog.jsx'));
@@ -42,7 +43,7 @@ const sheetItem = {
   color: 'var(--ink)', textAlign: 'start',
 };
 
-export default function DataView() {
+export default function DataView({ onStartEmpty }) {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
   const variables  = useDatasetStore(s => s.variables);
@@ -121,21 +122,14 @@ export default function DataView() {
 
   if (variables.length === 0) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height: 'calc(100dvh - var(--header-h) - var(--safe-top))',
-        color: 'var(--muted)', fontSize: 13, gap: 12,
-      }}>
-        <p style={{ margin: 0 }}>{t('noVariablesMessage')}</p>
-        <button type="button" onClick={() => setImportOpen(true)}>
-          ↓ {t('import.button')}
-        </button>
+      <>
+        <Welcome onImport={() => setImportOpen(true)} onStartEmpty={onStartEmpty} />
         {importOpen && (
           <LazyBoundary overlay onClose={() => setImportOpen(false)}>
             <ImportDialog onClose={() => setImportOpen(false)} />
           </LazyBoundary>
         )}
-      </div>
+      </>
     );
   }
 

@@ -135,6 +135,14 @@ const useDatasetStore = create((set, get) => ({
     _pushHist(before, after, set);
   },
 
+  /** Replace the whole dataset (e.g. the sample dataset) as one undoable step. */
+  loadDataset: ({ variables, cases }) => {
+    const before = _snapshot(get());
+    set({ variables, cases });
+    const after = _snapshot(get());
+    _pushHist(before, after, set);
+  },
+
   setLanguage: (language) => set({ language }),
 
   hydrate: ({ variables, cases, language = 'ar' }) => {

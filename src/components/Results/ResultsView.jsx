@@ -34,10 +34,18 @@ function resultToPlainText(result) {
 
 const loadPdf = () => import('../../lib/pdf/pdfExport.js');
 
-export default function ResultsView() {
+export default function ResultsView({ onGoToAnalyze }) {
   const { t, i18n } = useTranslation();
   const results      = useResultsStore(s => s.results);
   const clearResults = useResultsStore(s => s.clearResults);
+  const removeResult = useResultsStore(s => s.removeResult);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const copyResult = (result) => {
+    navigator.clipboard?.writeText(resultToPlainText(result))
+      .then(() => { setCopiedId(result.id); setTimeout(() => setCopiedId(null), 1500); })
+      .catch(() => window.alert(t('results.copyFailed')));
+  };
 
   const [search,   setSearch]   = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
@@ -50,6 +58,7 @@ export default function ResultsView() {
     if (!q) return true;
     return (
       r.analysisType.toLowerCase().includes(q) ||
+      t(`analysis.${r.analysisType}`).toLowerCase().includes(q) ||
       r.variablesUsed.some(v => v.toLowerCase().includes(q))
     );
   });
@@ -60,11 +69,14 @@ export default function ResultsView() {
   if (results.length === 0) {
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 'calc(100dvh - var(--header-h) - var(--safe-top))',
+        display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center', justifyContent: 'center',
+        minHeight: '60dvh', padding: 24, textAlign: 'center',
         color: 'var(--muted)', fontSize: 13,
       }}>
         <p style={{ margin: 0 }}>{t('results.empty')}</p>
+        {onGoToAnalyze && (
+          <button type="button" className="sigma-btn-primary" onClick={onGoToAnalyze}>{t('results.goAnalyze')}</button>
+        )}
       </div>
     );
   }
@@ -156,9 +168,9 @@ export default function ResultsView() {
               <button
                 type="button"
                 style={{ fontSize: 12, padding: '2px 8px' }}
-                onClick={() => navigator.clipboard.writeText(resultToPlainText(result))}
+                onClick={() => copyResult(result)}
               >
-                {t('results.copy')}
+                {copiedId === result.id ? `✓ ${t('results.copied')}` : t('results.copy')}
               </button>
               <button
                 type="button"
@@ -168,6 +180,15 @@ export default function ResultsView() {
                   .catch(() => window.alert(t('results.pdfFontFailed')))}
               >
                 {t('results.exportPdf')}
+              </button>
+              <button
+                type="button"
+                aria-label={t('results.delete')}
+                title={t('results.delete')}
+                style={{ fontSize: 12, padding: '2px 8px', color: 'var(--error)' }}
+                onClick={() => { if (window.confirm(t('results.confirmDelete'))) removeResult(result.id); }}
+              >
+                ✕
               </button>
             </div>
           </div>

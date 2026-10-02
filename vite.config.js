@@ -49,6 +49,33 @@ function offlineAssetsPlugin(shared) {
   }
 }
 
+/**
+ * Digital Asset Links for the Google Play (Trusted Web Activity) app. Emitted
+ * only when both env vars are set, e.g. in the Vercel project settings:
+ *   TWA_PACKAGE_ID=io.github.almhdy24.sigma
+ *   TWA_SHA256_FINGERPRINTS=AA:BB:…,CC:DD:…   (upload key and Play app-signing key)
+ * See docs/google-play.md.
+ */
+function assetLinksPlugin() {
+  const pkg = process.env.TWA_PACKAGE_ID
+  const fingerprints = (process.env.TWA_SHA256_FINGERPRINTS || '').split(',').map((s) => s.trim()).filter(Boolean)
+  return {
+    name: 'sigma-asset-links',
+    apply: 'build',
+    generateBundle() {
+      if (!pkg || fingerprints.length === 0) return
+      this.emitFile({
+        type: 'asset',
+        fileName: '.well-known/assetlinks.json',
+        source: JSON.stringify([{
+          relation: ['delegate_permission/common.handle_all_urls'],
+          target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fingerprints },
+        }], null, 2),
+      })
+    },
+  }
+}
+
 const shared = { initial: new Set() }
 
 export default defineConfig({
@@ -74,6 +101,7 @@ export default defineConfig({
     // `react` / `react-dom` imports — ours and libraries' — are aliased to preact/compat.
     preact({ prefreshEnabled: true }),
     offlineAssetsPlugin(shared),
+    assetLinksPlugin(),
     VitePWA({
       // Ask before activating a new version so an update never reloads the
       // page in the middle of an analysis (see PwaUpdatePrompt).
@@ -85,7 +113,7 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,json}'],
-        globIgnores: ['offline-assets.json'],
+        globIgnores: ['offline-assets.json', 'screenshots/**', '.well-known/**', 'privacy.html'],
         // Precache only the app shell; lazy chunks are runtime-cached below.
         manifestTransforms: [
           async (entries) => ({
@@ -138,6 +166,18 @@ export default defineConfig({
         lang: 'ar',
         dir: 'rtl',
         categories: ['education', 'productivity', 'utilities'],
+        prefer_related_applications: false,
+        launch_handler: { client_mode: 'navigate-existing' },
+        shortcuts: [
+          { name: 'تحليل البيانات', short_name: 'تحليل', url: './?tab=analyze', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+          { name: 'النتائج', short_name: 'النتائج', url: './?tab=results', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+        ],
+        screenshots: [
+          { src: 'screenshots/phone-welcome.png', sizes: '1080x1920', type: 'image/png', form_factor: 'narrow', label: 'شاشة البداية' },
+          { src: 'screenshots/phone-analyze.png', sizes: '1080x1920', type: 'image/png', form_factor: 'narrow', label: 'التحليلات الإحصائية' },
+          { src: 'screenshots/phone-results.png', sizes: '1080x1920', type: 'image/png', form_factor: 'narrow', label: 'النتائج والرسوم' },
+          { src: 'screenshots/desktop-data.png', sizes: '1920x1080', type: 'image/png', form_factor: 'wide', label: 'إدخال البيانات' },
+        ],
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
