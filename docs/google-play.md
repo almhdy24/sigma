@@ -2,7 +2,7 @@
 
 سيغما تطبيق ويب تقدّمي (PWA). يُغلَّف للنشر على Google Play كـ **Trusted Web Activity (TWA)**: تطبيق أندرويد صغير يفتح موقع سيغما بملء الشاشة، بلا شريط متصفح، ويعمل دون إنترنت بفضل الـ Service Worker.
 
-> **English summary:** Sigma ships to Google Play as a Trusted Web Activity built with Bubblewrap from `https://sigma.almhdy24.com/manifest.webmanifest`. Digital Asset Links are served from `/.well-known/assetlinks.json`, generated at build time from the `TWA_PACKAGE_ID` and `TWA_SHA256_FINGERPRINTS` environment variables (set them in Vercel). The steps are below.
+> **English summary:** Sigma ships to Google Play as a Trusted Web Activity. The Android project (generated with Bubblewrap) lives in `android/`, and the **Android app (Google Play)** GitHub workflow builds a signed `.aab` and `.apk` from it using the `SIGMA_KEYSTORE_BASE64` and `SIGMA_KEYSTORE_PASSWORD` secrets. Digital Asset Links are served from `/.well-known/assetlinks.json`, generated at build time from the `TWA_PACKAGE_ID` and `TWA_SHA256_FINGERPRINTS` environment variables (set them in Vercel). The steps are below.
 
 ## المتطلبات
 
@@ -10,51 +10,55 @@
 |---|---|
 | النطاق `sigma.almhdy24.com` يعمل على Vercel | راجع [deployment.md](deployment.md). يجب أن يكون التطبيق في **جذر** النطاق |
 | حساب مطوّر Google Play | رسوم لمرة واحدة 25$ |
-| Node.js 20+ | لتشغيل Bubblewrap |
-| JDK 17 و Android SDK | يثبّتهما Bubblewrap تلقائياً عند أول تشغيل |
+| مفتاح رفع (upload key) | ملف `sigma-upload.keystore` وكلمة مروره |
 
 > **للحسابات الشخصية الجديدة:** تشترط Google اختباراً مغلقاً مع **12 مختبِراً على الأقل لمدة 14 يوماً** قبل السماح بالنشر للإنتاج. خطّط لذلك مبكراً.
 
-## 1. توليد مشروع أندرويد
+## 1. مشروع أندرويد (جاهز في المستودع)
 
-```bash
-npm install -g @bubblewrap/cli
-mkdir sigma-android && cd sigma-android
-bubblewrap init --manifest https://sigma.almhdy24.com/manifest.webmanifest
-```
+مشروع التطبيق موجود في مجلد [`android/`](../android)، ومولَّد بـ Bubblewrap 1.25 (يستهدف Android 16 / API 36 كما تشترط Google Play):
 
-أجب على الأسئلة كالتالي:
-
-| السؤال | الإجابة |
+| الإعداد | القيمة |
 |---|---|
-| Domain | `sigma.almhdy24.com` |
-| Application ID (package) | `com.almhdy24.sigma` |
-| App name / Launcher name | `Sigma — التحليل الإحصائي` / `Sigma` |
-| Display mode | `standalone` |
-| Status bar color | `#1f5fa6` |
-| Splash background | `#f2f5f8` |
-| Icon / Maskable icon | تُقرأ تلقائياً من الـ manifest |
-| Signing key | أنشئ مفتاحاً جديداً (`android.keystore`) |
+| Package | `com.almhdy24.sigma` |
+| الموقع | `https://sigma.almhdy24.com` |
+| إعدادات التطبيق | [`android/twa-manifest.json`](../android/twa-manifest.json) |
 
-> ⚠️ **احتفظ بملف `android.keystore` وكلمة مروره في مكان آمن خارج Git.** بدونه لن تستطيع تحديث التطبيق. احفظ مجلد `sigma-android` في مستودع منفصل أو احتياطي، وليس داخل هذا المستودع.
+## 2. بناء ملف AAB (عبر GitHub Actions، بدون تثبيت أي شيء)
 
-## 2. البناء
+1. أضف مفتاح التوقيع كـ **Secrets** في المستودع (مرة واحدة):
+   **Settings ← Secrets and variables ← Actions ← New repository secret**
 
+   | Secret | القيمة |
+   |---|---|
+   | `SIGMA_KEYSTORE_BASE64` | محتوى ملف المفتاح بترميز base64 (`base64 -w0 sigma-upload.keystore`) |
+   | `SIGMA_KEYSTORE_PASSWORD` | كلمة مرور المفتاح |
+
+2. افتح **Actions ← Android app (Google Play) ← Run workflow**.
+3. بعد دقائق، نزّل الـ artifact المسمّى **sigma-android** من صفحة التشغيل. بداخله:
+   - `sigma-1.0.N.aab`: ارفعه على Google Play.
+   - `sigma-1.0.N.apk`: ثبّته على جوالك للتجربة.
+
+رقم الإصدار (`versionCode`) يزيد تلقائياً مع كل تشغيل، لأن Google Play يرفض تكرار الرقم.
+
+> بدون الـ Secrets يُبنى التطبيق بمفتاح مؤقت للتجربة فقط، **لا ترفعه على Google Play**.
+
+**بديل محلي:** إن كان عندك Android SDK وJDK 17:
 ```bash
-bubblewrap build
+cd android
+SIGMA_KEYSTORE_FILE=/path/sigma-upload.keystore SIGMA_KEYSTORE_PASSWORD=*** ./gradlew bundleRelease
 ```
+أو استخدم `bubblewrap build` داخل مجلد `android/`.
 
-النتيجة:
-- `app-release-bundle.aab`: ارفعه على Google Play.
-- `app-release-signed.apk`: للتجربة على جوالك مباشرة.
+> ⚠️ **احتفظ بملف المفتاح وكلمة مروره في مكان آمن خارج Git.** فعّل **Play App Signing** في Play Console. بذلك تحتفظ Google بمفتاح توقيع التطبيق، ويكون ملفك «مفتاح رفع» فقط، تستطيع Google إعادة تعيينه إن ضاع.
 
 ## 3. ربط النطاق بالتطبيق (Digital Asset Links)
 
 بدون هذه الخطوة يظهر شريط عنوان المتصفح أعلى التطبيق.
 
-1. استخرج بصمة SHA-256 لمفتاح الرفع:
+1. استخرج بصمة SHA-256 لمفتاح الرفع (أو انسخها من ملخص تشغيل «Android app» في Actions):
    ```bash
-   keytool -list -v -keystore android.keystore -alias android
+   keytool -list -v -keystore sigma-upload.keystore -alias sigma-upload
    ```
 2. بعد إنشاء التطبيق في Play Console انسخ بصمة **App signing key** من:
    **Play Console ← التطبيق ← Test and release ← App integrity ← App signing**
@@ -105,4 +109,4 @@ bubblewrap build
 
 ## 6. التحديثات
 
-لا تحتاج لإعادة رفع التطبيق عند تحديث سيغما: أي تحديث يُدمج في `main` يُنشر على الموقع ويصل للمستخدمين تلقائياً (يظهر لهم إشعار «يتوفر إصدار جديد»). أعد البناء بـ Bubblewrap فقط عند تغيير الأيقونة أو الاسم أو الألوان، مع رفع `appVersionCode` في `twa-manifest.json`.
+لا تحتاج لإعادة رفع التطبيق عند تحديث سيغما: أي تحديث يُدمج في `main` يُنشر على الموقع ويصل للمستخدمين تلقائياً (يظهر لهم إشعار «يتوفر إصدار جديد»). أعد بناء ملف AAB من Actions فقط عند تغيير الأيقونة أو الاسم أو الألوان في مجلد `android/`. رقم الإصدار يزيد تلقائياً.

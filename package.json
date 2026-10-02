@@ -45,7 +45,7 @@
     "vite-plugin-pwa": "1.3.0",
     "vitest": "^5.0.3"
   },
-  "homepage": "https://almhdy24.github.io/sigma/",
+  "homepage": "https://sigma.almhdy24.com",
   "resolutions": {
     "dompurify": "^3.4.16",
     "serialize-javascript": "^7.1.2"

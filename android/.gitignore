@@ -1,0 +1,11 @@
+# Never commit signing keys
+*.keystore
+*.jks
+# Gradle / Android build output
+.gradle/
+build/
+app/build/
+local.properties
+*.aab
+*.apk
+*.idsig
