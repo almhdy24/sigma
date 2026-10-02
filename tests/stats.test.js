@@ -10,7 +10,9 @@ import { computeFrequencies } from '../src/lib/stats/frequencies.js';
 
 const py = createCPythonFacade();
 
-describe.skipIf(!hasScipy())('stats modules (CPython + SciPy)', () => {
+// Each test spawns python3 and imports SciPy (~0.6 s normally, much slower on a
+// cold or busy machine), so allow more than Vitest's default 5 s.
+describe.skipIf(!hasScipy())('stats modules (CPython + SciPy)', { timeout: 30_000 }, () => {
   it('descriptives: mean, SD (n−1), missing', async () => {
     const r = await computeDescriptives(py, [2, 4, 4, 4, 5, 5, 7, 9, null]);
     expect(r.n).toBe(8);
