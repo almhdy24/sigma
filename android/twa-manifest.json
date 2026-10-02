@@ -1,0 +1,50 @@
+{
+  "packageId": "com.almhdy24.sigma",
+  "host": "sigma.almhdy24.com",
+  "name": "Sigma — التحليل الإحصائي",
+  "launcherName": "Sigma",
+  "display": "standalone",
+  "themeColor": "#1F5FA6",
+  "themeColorDark": "#000000",
+  "navigationColor": "#FFFFFF",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#C8D6E2",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#F2F5F8",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://sigma.almhdy24.com/icon-512.png",
+  "maskableIconUrl": "https://sigma.almhdy24.com/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./sigma-upload.keystore",
+    "alias": "sigma-upload"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-core 1.25.0",
+  "webManifestUrl": "https://sigma.almhdy24.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://sigma.almhdy24.com/",
+  "minSdkVersion": 21,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "navigate-existing",
+  "displayOverride": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "appVersion": "1.0.0"
+}

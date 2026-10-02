@@ -113,7 +113,10 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,json}'],
-        globIgnores: ['offline-assets.json', 'screenshots/**', '.well-known/**', 'privacy.html'],
+        globIgnores: ['offline-assets.json', 'screenshots/**', '.well-known/**'],
+        // Navigations fall back to the app shell (index.html) — except real
+        // standalone pages, which must be served as themselves.
+        navigateFallbackDenylist: [/\/privacy\.html$/, /\/\.well-known\//, /\/screenshots\//],
         // Precache only the app shell; lazy chunks are runtime-cached below.
         manifestTransforms: [
           async (entries) => ({
