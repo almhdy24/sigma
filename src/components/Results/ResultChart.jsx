@@ -1,5 +1,5 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import ROCChart from '../Charts/ROCChart.jsx';
+import BarChart from '../Charts/svg/BarChart.jsx';
 
 export default function ResultChart({ chartData }) {
   if (!chartData) return null;
@@ -12,14 +12,7 @@ export default function ResultChart({ chartData }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={chartData.data} margin={{ top: 4, right: 16, bottom: 24, left: 0 }}>
-          <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} angle={-30} textAnchor="end" />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Bar dataKey="value" fill="#1f5fa6" />
-        </BarChart>
-      </ResponsiveContainer>
+      <BarChart height={240} data={chartData.data} />
     </div>
   );
 }

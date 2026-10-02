@@ -27,3 +27,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Android / Google Play signing (never commit)
+*.keystore
+*.jks
+sigma-android/

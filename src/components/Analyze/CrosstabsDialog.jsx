@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { computeCrosstabs } from '../../lib/stats/crosstabs.js';
 import { apaCrosstabs } from '../../lib/apaMethods.js';
 import useFilterStore from '../../store/filterStore.js';
@@ -44,7 +44,7 @@ export default function CrosstabsDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.crosstabs);
       const _groups = getAnalysisCaseGroups(cases, activeFilter, variables, splitVar);
       for (const _group of _groups) {
         const cases = _group.cases;
@@ -77,7 +77,7 @@ export default function CrosstabsDialog({ onClose, onResultAdded, onHelp }) {
           const vStr = res.cramersV == null ? '—' : `${res.cramersV.toFixed(3)} (${cramersMag(res.cramersV)})`;
           tables.push({
             title: 'Chi-Square Tests',
-            columns: ['Test', 'Value', 'df', 'p', "Cramér's V"],
+            columns: [t('table.test'), t('table.value'), 'df', 'p', "Cramér's V"],
             rows: [['Pearson Chi-Square', res.chiSquare.toFixed(3), res.dof, res.pValue.toFixed(3), vStr]],
           });
         }
@@ -106,7 +106,7 @@ export default function CrosstabsDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[CrosstabsDialog] analysis error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

@@ -7,7 +7,7 @@ const cardStyle = {
   WebkitTapHighlightColor: 'transparent', minHeight: 44,
 };
 const fabStyle = {
-  position: 'fixed', insetBlockEnd: 72, insetInlineEnd: 20,
+  position: 'fixed', insetBlockEnd: 'calc(var(--bottom-nav-h) + 16px + var(--safe-bottom))', insetInlineEnd: 20,
   width: 56, height: 56, borderRadius: '50%',
   background: 'var(--accent)', color: '#fff', border: 'none',
   fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -16,6 +16,7 @@ const fabStyle = {
 const fullScreenStyle = {
   position: 'fixed', inset: 0, background: 'var(--page)',
   zIndex: 300, display: 'flex', flexDirection: 'column', overflowY: 'auto',
+  paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)',
 };
 const editHeaderStyle = {
   position: 'sticky', top: 0, zIndex: 10, background: 'var(--surface)',
@@ -33,7 +34,7 @@ const badgeStyle = {
   background: 'var(--accent-tint)', color: 'var(--accent)', fontWeight: 500,
 };
 
-export default function MobileVariableView({ variables, cases, addVariable, updateVariable, deleteVariable, t, onOpenValueLabels }) {
+export default function MobileVariableView({ variables, addVariable, updateVariable, deleteVariable, t, onOpenValueLabels }) {
   const [editId, setEditId] = useState(null);
   const [draft, setDraft] = useState({});
 

@@ -23,10 +23,6 @@ const SECTIONS = [
   { id: 'references',      navKey: 'help.nav.references' },
 ];
 
-function assumptionKeys(ns, count) {
-  return Array.from({ length: count }, (_, i) => `${ns}.assumption.${i + 1}`);
-}
-
 /* ─── helpers ───────────────────────────────────────────────── */
 function ExternalLink({ href, children }) {
   return (
@@ -52,12 +48,17 @@ function TestEntry({ testId, highlighted, onMount }) {
   const ref = useRef(null);
   const ns = `help.tests.${testId}`;
 
+  // Open the entry when it becomes highlighted (state adjusted during render,
+  // per https://react.dev/learn/you-might-not-need-an-effect), then scroll.
+  const [prevHighlighted, setPrevHighlighted] = useState(highlighted);
+  if (highlighted !== prevHighlighted) {
+    setPrevHighlighted(highlighted);
+    if (highlighted) setOpen(true);
+  }
+
   useEffect(() => {
-    if (highlighted) {
-      setOpen(true);
-      if (ref.current) {
-        ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+    if (highlighted && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [highlighted]);
 
@@ -203,13 +204,20 @@ export default function HelpPage({ anchor }) {
   const [navOpen,     setNavOpen]     = useState(false);
   const [highlighted, setHighlighted] = useState(null);
 
-  /* resolve anchor → highlighted test */
+  /* resolve anchor → highlighted test (during render, not in an effect) */
+  const [prevAnchor, setPrevAnchor] = useState(null);
+  if (anchor !== prevAnchor) {
+    setPrevAnchor(anchor);
+    const id = anchor?.replace(/^test-/, '');
+    if (id && TESTS.includes(id)) setHighlighted(id);
+  }
+
+  /* scroll to the anchor once rendered */
   useEffect(() => {
     if (!anchor) return;
     const id = anchor.replace(/^test-/, '');
     if (TESTS.includes(id)) {
-      setHighlighted(id);
-      /* scroll is handled by TestEntry */
+      /* TestEntry also scrolls itself into view when highlighted */
       const el = document.getElementById(`test-${id}`);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
@@ -262,9 +270,9 @@ export default function HelpPage({ anchor }) {
   });
 
   /* ─── TOC sidebar (desktop) / dropdown (mobile) ── */
-  const NavContent = () => (
+  const navContent = (
     <nav aria-label={t('help.nav.title')}>
-      <p style={{ margin: '0 0 8px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+      <p style={{ margin: 0, marginBottom: 8, marginInlineStart: 12, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)' }}>
         {t('help.nav.title')}
       </p>
       {SECTIONS.map(({ id, navKey }) => (
@@ -273,7 +281,7 @@ export default function HelpPage({ anchor }) {
         </button>
       ))}
       <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-        <p style={{ margin: '0 0 4px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+        <p style={{ margin: 0, marginBottom: 4, marginInlineStart: 12, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted)' }}>
           {t('help.nav.tests')}
         </p>
         {TESTS.map((id) => (
@@ -301,7 +309,7 @@ export default function HelpPage({ anchor }) {
             flexShrink: 0,
             position: 'sticky',
             top: 60,
-            maxHeight: 'calc(100vh - 80px)',
+            maxHeight: 'calc(100dvh - 80px)',
             overflowY: 'auto',
             background: 'var(--surface)',
             border: '1px solid var(--border)',
@@ -309,7 +317,7 @@ export default function HelpPage({ anchor }) {
             padding: '12px 4px',
             marginInlineEnd: 24,
           }}>
-            <NavContent />
+            {navContent}
           </aside>
 
           {/* main content */}
@@ -356,7 +364,7 @@ export default function HelpPage({ anchor }) {
             </button>
             {navOpen && (
               <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0 4px' }}>
-                <NavContent />
+                {navContent}
               </div>
             )}
           </div>

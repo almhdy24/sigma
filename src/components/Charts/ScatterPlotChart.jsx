@@ -1,39 +1,25 @@
-import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
-
-export function computeScatterData(xValues, yValues) {
-  const points = [];
-  for (let i = 0; i < xValues.length; i++) {
-    if (xValues[i] !== null && yValues[i] !== null) {
-      points.push({ x: xValues[i], y: yValues[i] });
-    }
-  }
-  return points;
-}
+import { Chart, NumericAxis } from './svg/Chart.jsx';
+import { COLORS, numericX } from '../../lib/charts/scale.js';
 
 export default function ScatterPlotChart({ points, xName, yName }) {
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const yDomain = ys.length ? [Math.min(...ys), Math.max(...ys)] : [0, 1];
+  const xDomain = xs.length ? [Math.min(...xs), Math.max(...xs)] : [0, 1];
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      <ScatterChart margin={{ top: 10, right: 30, left: 0, bottom: 40 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis
-          type="number"
-          dataKey="x"
-          name={xName}
-          label={{ value: xName, position: 'insideBottom', offset: -30, fontSize: 13 }}
-          tick={{ fontSize: 11 }}
-        />
-        <YAxis
-          type="number"
-          dataKey="y"
-          name={yName}
-          label={{ value: yName, angle: -90, position: 'insideLeft', fontSize: 13 }}
-          tick={{ fontSize: 11 }}
-        />
-        <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-        <Scatter data={points} fill="#1f5fa6" opacity={0.7} isAnimationActive={false} />
-      </ScatterChart>
-    </ResponsiveContainer>
+    <Chart height={400} yDomain={yDomain} xLabel={xName} yLabel={yName} title={`${yName} × ${xName}`}
+      xAxis={({ x0, x1, top, plotH }) => {
+        const { x, ticks } = numericX(xDomain, x0, x1);
+        return <NumericAxis x={x} ticks={ticks} top={top} plotH={plotH} />;
+      }}>
+      {({ x0, x1, y }) => {
+        const { x } = numericX(xDomain, x0, x1);
+        return points.map((p, i) => (
+          <circle key={i} cx={x(p.x)} cy={y(p.y)} r={3.5} fill={COLORS.accent} fillOpacity={0.65}>
+            <title>{`${xName}: ${p.x}, ${yName}: ${p.y}`}</title>
+          </circle>
+        ));
+      }}
+    </Chart>
   );
 }

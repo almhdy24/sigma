@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { computeCorrelation } from '../../lib/stats/correlation.js';
 import { apaCorrelation } from '../../lib/apaMethods.js';
 import useFilterStore from '../../store/filterStore.js';
@@ -50,7 +50,7 @@ export default function CorrelationDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.correlation);
       const _groups = getAnalysisCaseGroups(cases, activeFilter, variables, splitVar);
       for (const _group of _groups) {
         const cases = _group.cases;
@@ -68,7 +68,7 @@ export default function CorrelationDialog({ onClose, onResultAdded, onHelp }) {
 
         const makeMatrix = (mat, label) => ({
           title: label,
-          columns: ['Variable', ...varNames],
+          columns: [t('table.variable'), ...varNames],
           rows: varNames.map((vn, i) => [vn, ...varNames.map((_, j) => FMT(mat[i][j]))]),
         });
 
@@ -100,7 +100,7 @@ export default function CorrelationDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[CorrelationDialog] analysis error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

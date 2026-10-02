@@ -1,21 +1,24 @@
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { lazy, useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AgGridReact } from 'ag-grid-react';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import useDatasetStore from '../store/datasetStore.js';
 import useFilterStore from '../store/filterStore.js';
 import useIsMobile from '../hooks/useIsMobile.js';
 import MobileDataView from './DataView/MobileDataView.jsx';
-import ImportDialog from './Import/ImportDialog.jsx';
 import ExportDatasetButton from './Export/ExportDatasetButton.jsx';
 import { detectOutliersIQR } from '../lib/stats/outliers.js';
-import ComputeVariableDialog from './Transform/ComputeVariableDialog.jsx';
-import RecodeDialog from './Transform/RecodeDialog.jsx';
-import SelectCasesDialog from './Transform/SelectCasesDialog.jsx';
-import SplitFileDialog from './Transform/SplitFileDialog.jsx';
+import LazyBoundary from './LazyBoundary.jsx';
 import { exportDatasetAsCsv, exportDatasetAsXlsx } from '../lib/exportDataset.js';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+import DataGrid from './Grid/DataGrid.jsx';
+import Welcome from './Welcome/Welcome.jsx';
+
+// Dialogs are separate chunks (Compute pulls in mathjs, Import the file parsers).
+const ImportDialog          = lazy(() => import('./Import/ImportDialog.jsx'));
+const ComputeVariableDialog = lazy(() => import('./Transform/ComputeVariableDialog.jsx'));
+const RecodeDialog          = lazy(() => import('./Transform/RecodeDialog.jsx'));
+const SelectCasesDialog     = lazy(() => import('./Transform/SelectCasesDialog.jsx'));
+const SplitFileDialog       = lazy(() => import('./Transform/SplitFileDialog.jsx'));
+
 
 function DeleteCaseCellRenderer({ data, onDelete }) {
   const { t } = useTranslation();
@@ -40,7 +43,7 @@ const sheetItem = {
   color: 'var(--ink)', textAlign: 'start',
 };
 
-export default function DataView() {
+export default function DataView({ onStartEmpty }) {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
   const variables  = useDatasetStore(s => s.variables);
@@ -84,69 +87,56 @@ export default function DataView() {
     if (window.confirm(t('confirmDeleteCase'))) deleteCase(id);
   }, [deleteCase, t]);
 
-  const onCellValueChanged = useCallback((params) => {
-    const caseId = params.data.id;
-    const varId  = params.column.getColId();
+  const onEdit = useCallback((caseId, varId, raw) => {
     const variable = variables.find(v => v.id === varId);
     if (!variable) return;
-
-    let value = params.newValue;
-    if (variable.type === 'numeric') {
-      const n = Number(params.newValue);
-      value = (
-        params.newValue === null ||
-        params.newValue === undefined ||
-        params.newValue === '' ||
-        isNaN(n)
-      ) ? null : n;
+    let value = raw === '' ? null : raw;
+    if (variable.type === 'numeric' && value !== null) {
+      const n = Number(String(value).trim().replace(',', '.'));
+      value = Number.isFinite(n) ? n : null;
     }
     updateCell(caseId, varId, value);
   }, [variables, updateCell]);
 
-  const columnDefs = useMemo(() => {
-    const varCols = variables.map(v => ({
-      colId: v.id,
-      field: v.id,
-      headerName: v.label || v.name,
-      editable: true,
-      cellEditor: v.type === 'numeric' ? 'agNumberCellEditor' : 'agTextCellEditor',
-    }));
-
-    return [
-      ...varCols,
-      {
-        colId: '_deleteCase',
-        headerName: '',
-        editable: false,
-        sortable: false,
-        filter: false,
-        width: 52,
-        cellRenderer: DeleteCaseCellRenderer,
-        cellRendererParams: { onDelete: handleDeleteCase },
-      },
-    ];
-  }, [variables, handleDeleteCase]);
+  const columns = useMemo(() => [
+    ...variables.map(v => {
+      const labels = v.valueLabels ?? {};
+      const hasLabels = Object.keys(labels).length > 0;
+      return {
+        id: v.id,
+        header: v.label || v.name,
+        type: v.type === 'numeric' ? 'number' : 'text',
+        minWidth: 110,
+        format: hasLabels
+          ? (val) => (val == null || val === '' ? '' : labels[val] != null ? `${val} (${labels[val]})` : val)
+          : undefined,
+      };
+    }),
+    {
+      id: '_deleteCase',
+      header: '',
+      width: 48,
+      render: (row) => <DeleteCaseCellRenderer data={row} onDelete={handleDeleteCase} />,
+    },
+  ], [variables, handleDeleteCase]);
 
   if (variables.length === 0) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height: 'calc(100vh - var(--header-h))',
-        color: 'var(--muted)', fontSize: 13, gap: 12,
-      }}>
-        <p style={{ margin: 0 }}>{t('noVariablesMessage')}</p>
-        <button type="button" onClick={() => setImportOpen(true)}>
-          ↓ {t('import.button')}
-        </button>
-        {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
-      </div>
+      <>
+        <Welcome onImport={() => setImportOpen(true)} onStartEmpty={onStartEmpty} />
+        {importOpen && (
+          <LazyBoundary overlay onClose={() => setImportOpen(false)}>
+            <ImportDialog onClose={() => setImportOpen(false)} />
+          </LazyBoundary>
+        )}
+      </>
     );
   }
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: `calc(100vh - var(--header-h)${isMobile ? ' - 56px' : ''})`,
+      height: `calc(100dvh - var(--header-h) - var(--safe-top)${isMobile ? ' - var(--bottom-nav-h) - var(--safe-bottom)' : ''})`,
     }}>
       {/* Toolbar */}
       {isMobile ? (
@@ -180,11 +170,11 @@ export default function DataView() {
                 style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.35)' }}
               />
               <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+                position: 'fixed', bottom: 0, insetInline: 0, zIndex: 401,
                 background: 'var(--surface)', borderRadius: '12px 12px 0 0',
-                paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: 'calc(var(--bottom-nav-h) + var(--safe-bottom))',
                 boxShadow: '0 -4px 24px rgba(0,0,0,0.18)',
-                maxHeight: '75vh', overflowY: 'auto',
+                maxHeight: '75dvh', overflowY: 'auto', overscrollBehavior: 'contain',
               }}>
                 <div style={{ padding: '14px 20px 10px', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>
@@ -228,13 +218,13 @@ export default function DataView() {
                 <button type="button"
                   disabled={variables.length === 0 || cases.length === 0}
                   style={{ ...sheetItem, opacity: (variables.length === 0 || cases.length === 0) ? 0.4 : 1, cursor: (variables.length === 0 || cases.length === 0) ? 'default' : 'pointer' }}
-                  onClick={() => { exportDatasetAsCsv(variables, cases); setMoreOpen(false); }}>
+                  onClick={() => { exportDatasetAsCsv(variables, cases).catch(() => window.alert(t('export.failed'))); setMoreOpen(false); }}>
                   <span style={{ width: 22, flexShrink: 0 }}>↑</span>{t('export.csv')}
                 </button>
                 <button type="button"
                   disabled={variables.length === 0 || cases.length === 0}
                   style={{ ...sheetItem, opacity: (variables.length === 0 || cases.length === 0) ? 0.4 : 1, cursor: (variables.length === 0 || cases.length === 0) ? 'default' : 'pointer' }}
-                  onClick={() => { exportDatasetAsXlsx(variables, cases); setMoreOpen(false); }}>
+                  onClick={() => { exportDatasetAsXlsx(variables, cases, { rightToLeft: i18n.dir() === 'rtl' }).catch(() => window.alert(t('export.failed'))); setMoreOpen(false); }}>
                   <span style={{ width: 22, flexShrink: 0 }}>↑</span>{t('export.excel')}
                 </button>
               </div>
@@ -333,26 +323,44 @@ export default function DataView() {
           t={t}
         />
       ) : (
-        <div className="ag-theme-alpine" style={{ flex: 1, minHeight: 0 }}>
-          <AgGridReact
-            key={i18n.language}
-            rowData={rowData}
-            columnDefs={columnDefs}
-            onCellValueChanged={onCellValueChanged}
-            getRowId={(p) => p.data.id}
-            enableRtl={i18n.language === 'ar'}
-          />
-        </div>
+        <DataGrid
+          label={t('data')}
+          rows={rowData}
+          columns={columns}
+          onEdit={onEdit}
+          rowNumbers
+          emptyText={t('dataGrid.empty', { defaultValue: '' })}
+        />
       )}
 
-      {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
+      {importOpen && (
+          <LazyBoundary overlay onClose={() => setImportOpen(false)}>
+            <ImportDialog onClose={() => setImportOpen(false)} />
+          </LazyBoundary>
+        )}
       {qualityOpen && (
         <DataQualityModal variables={variables} cases={cases} t={t} onClose={() => setQualityOpen(false)} />
       )}
-      {computeOpen && <ComputeVariableDialog onClose={() => setComputeOpen(false)} />}
-      {recodeOpen  && <RecodeDialog onClose={() => setRecodeOpen(false)} />}
-      {filterOpen  && <SelectCasesDialog onClose={() => setFilterOpen(false)} cases={cases} variables={variables} />}
-      {splitOpen   && <SplitFileDialog onClose={() => setSplitOpen(false)} variables={variables} />}
+      {computeOpen && (
+        <LazyBoundary overlay onClose={() => setComputeOpen(false)}>
+          <ComputeVariableDialog onClose={() => setComputeOpen(false)} />
+        </LazyBoundary>
+      )}
+      {recodeOpen && (
+        <LazyBoundary overlay onClose={() => setRecodeOpen(false)}>
+          <RecodeDialog onClose={() => setRecodeOpen(false)} />
+        </LazyBoundary>
+      )}
+      {filterOpen && (
+        <LazyBoundary overlay onClose={() => setFilterOpen(false)}>
+          <SelectCasesDialog onClose={() => setFilterOpen(false)} cases={cases} variables={variables} />
+        </LazyBoundary>
+      )}
+      {splitOpen && (
+        <LazyBoundary overlay onClose={() => setSplitOpen(false)}>
+          <SplitFileDialog onClose={() => setSplitOpen(false)} variables={variables} />
+        </LazyBoundary>
+      )}
     </div>
   );
 }

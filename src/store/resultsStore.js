@@ -9,7 +9,9 @@ const useResultsStore = create((set) => ({
         ...state.results,
       ],
     })),
+  removeResult: (id) => set((state) => ({ results: state.results.filter((r) => r.id !== id) })),
   clearResults: () => set({ results: [] }),
+  hydrate: (results) => set({ results: Array.isArray(results) ? results : [] }),
 }));
 
 export default useResultsStore;

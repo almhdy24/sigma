@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { evaluate } from 'mathjs';
+import { ExpressionError, evaluateAst, parseExpression, referencedVariables } from '../../lib/expression.js';
 import useDatasetStore from '../../store/datasetStore.js';
 import {
   overlay, modal, overlayClass, modalClass, dialogTitle, footer,
@@ -12,7 +12,7 @@ export default function ComputeVariableDialog({ onClose }) {
   const variables = useDatasetStore((s) => s.variables);
   const cases = useDatasetStore((s) => s.cases);
   const addVariable = useDatasetStore((s) => s.addVariable);
-  const updateCell = useDatasetStore((s) => s.updateCell);
+  const setColumn = useDatasetStore((s) => s.setColumn);
 
   const numericVars = useMemo(() => variables.filter((v) => v.type === 'numeric'), [variables]);
 
@@ -48,28 +48,40 @@ export default function ComputeVariableDialog({ onClose }) {
       setError(t('dialog.compute.invalidName'));
       return;
     }
-
-    let newVarId = null;
-    if (!existingTarget) {
-      newVarId = crypto.randomUUID();
-      addVariable({ id: newVarId, name: targetName, label: targetName, type: 'numeric', measure: 'scale' });
+    if (!existingTarget && variables.some((v) => v.name.toLowerCase() === targetName.toLowerCase())) {
+      setError(t('dialog.compute.nameTaken'));
+      return;
     }
 
-    const resolvedVarId = existingTarget ? targetVarId : newVarId;
-
+    // Validate the whole formula before touching the dataset.
+    let ast;
     try {
-      for (const c of cases) {
-        const scope = {};
-        for (const v of numericVars) {
-          scope[v.name] = c.values[v.id] ?? 0;
-        }
-        const result = evaluate(formula, scope);
-        updateCell(c.id, resolvedVarId, result);
-      }
-      onClose();
+      ast = parseExpression(formula);
+      const known = new Set(numericVars.map((v) => v.name));
+      const unknown = [...referencedVariables(ast)].filter((n) => !known.has(n));
+      if (unknown.length) throw new ExpressionError(t('dialog.compute.unknownVars', { names: unknown.join(', ') }));
     } catch (e) {
-      setError(`${t('dialog.compute.formulaError')}: ${e.message}`);
+      setError(t('dialog.compute.formulaError', { msg: e.message }));
+      return;
     }
+
+    // Missing values stay missing (never treated as 0); results that are not
+    // finite numbers (e.g. division by zero) become missing too.
+    const values = new Map();
+    for (const c of cases) {
+      const scope = {};
+      for (const v of numericVars) scope[v.name] = c.values[v.id] ?? null;
+      const result = evaluateAst(ast, scope);
+      values.set(c.id, Number.isFinite(result) ? result : null);
+    }
+
+    let resolvedVarId = targetVarId;
+    if (!existingTarget) {
+      resolvedVarId = crypto.randomUUID();
+      addVariable({ id: resolvedVarId, name: targetName, label: targetName, type: 'numeric', measure: 'scale' });
+    }
+    setColumn(resolvedVarId, values);
+    onClose();
   };
 
   const toggleStyle = (active) => ({

@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import { extractValues } from '../../lib/stats/extractValues.js';
 import { downloadChartPng } from './chartExport.js';
-import HistogramChart, { computeHistogramBins } from './HistogramChart.jsx';
-import CategoryBarChart, { computeCategoryFrequencies } from './CategoryBarChart.jsx';
-import ScatterPlotChart, { computeScatterData } from './ScatterPlotChart.jsx';
-import BoxPlotChart, { buildBoxPlotData } from './BoxPlotChart.jsx';
+import HistogramChart from './HistogramChart.jsx';
+import CategoryBarChart from './CategoryBarChart.jsx';
+import ScatterPlotChart from './ScatterPlotChart.jsx';
+import BoxPlotChart from './BoxPlotChart.jsx';
+import {
+  buildBoxPlotData, computeCategoryFrequencies, computeHistogramBins, computeScatterData,
+} from '../../lib/charts/chartData.js';
 
 const CHART_TYPES = ['histogram', 'bar', 'scatter', 'box'];
 

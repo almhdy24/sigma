@@ -1,69 +1,162 @@
-import react from '@vitejs/plugin-react'
+import preact from '@preact/preset-vite'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { PYODIDE_CDN, PYODIDE_VERSION } from './src/lib/engine/manifest.js'
 
-const PYODIDE_CDN = 'https://cdn.jsdelivr.net'
+// GitHub Pages serves the app from /<repo>/; set BASE_PATH there (see the
+// deploy workflow). Locally and on root-hosted platforms it stays "/".
+const base = process.env.BASE_PATH || '/'
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Splits the build output into:
+ *  - the initial app shell (entry chunk + its static imports + their CSS),
+ *    which the service worker precaches on install, and
+ *  - everything else (lazy screens, dialogs, export libraries, fonts), which
+ *    is downloaded only when first used and listed in offline-assets.json so
+ *    "Download everything for offline use" can cache it on demand.
+ */
+function offlineAssetsPlugin(shared) {
+  return {
+    name: 'sigma-offline-assets',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      const initial = new Set()
+      const visit = (fileName) => {
+        if (initial.has(fileName)) return
+        const chunk = bundle[fileName]
+        if (!chunk || chunk.type !== 'chunk') return
+        initial.add(fileName)
+        chunk.viteMetadata?.importedCss?.forEach((css) => initial.add(css))
+        chunk.imports.forEach(visit)
+      }
+      Object.values(bundle)
+        .filter((c) => c.type === 'chunk' && c.isEntry && !c.fileName.includes('worker'))
+        .forEach((c) => visit(c.fileName))
+      // UI strings for both languages are tiny and needed offline: precache
+      // them too (only the active one is fetched at start-up).
+      Object.values(bundle)
+        .filter((c) => c.type === 'chunk' && /[\\/]src[\\/]i18n[\\/]locales[\\/]/.test(c.facadeModuleId ?? ''))
+        .forEach((c) => visit(c.fileName))
+
+      shared.initial = initial
+      const lazy = Object.keys(bundle)
+        .filter((f) => !initial.has(f) && /\.(js|css|woff2|ttf)$/.test(f))
+        .sort()
+      this.emitFile({ type: 'asset', fileName: 'offline-assets.json', source: JSON.stringify(lazy) })
+    },
+  }
+}
+
+/**
+ * Digital Asset Links for the Google Play (Trusted Web Activity) app. Emitted
+ * only when both env vars are set, e.g. in the Vercel project settings:
+ *   TWA_PACKAGE_ID=io.github.almhdy24.sigma
+ *   TWA_SHA256_FINGERPRINTS=AA:BB:…,CC:DD:…   (upload key and Play app-signing key)
+ * See docs/google-play.md.
+ */
+function assetLinksPlugin() {
+  const pkg = process.env.TWA_PACKAGE_ID
+  const fingerprints = (process.env.TWA_SHA256_FINGERPRINTS || '').split(',').map((s) => s.trim()).filter(Boolean)
+  return {
+    name: 'sigma-asset-links',
+    apply: 'build',
+    generateBundle() {
+      if (!pkg || fingerprints.length === 0) return
+      this.emitFile({
+        type: 'asset',
+        fileName: '.well-known/assetlinks.json',
+        source: JSON.stringify([{
+          relation: ['delegate_permission/common.handle_all_urls'],
+          target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fingerprints },
+        }], null, 2),
+      })
+    },
+  }
+}
+
+const shared = { initial: new Set() }
 
 export default defineConfig({
+  base,
+  worker: { format: 'es' },
+  build: {
+    target: 'es2022',
+    // AG Grid alone is ~1 MB minified; it is lazy-loaded with the data grid.
+    chunkSizeWarningLimit: 1200,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            // Shared by every screen; a stable chunk keeps the HTTP/SW cache warm across releases.
+            { name: 'preact', test: /node_modules[\\/]preact[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   plugins: [
-    react(),
+    // Preact (~11 KB) with React compatibility instead of React (~70 KB gzipped).
+    // `react` / `react-dom` imports — ours and libraries' — are aliased to preact/compat.
+    preact({ prefreshEnabled: true }),
+    offlineAssetsPlugin(shared),
+    assetLinksPlugin(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Ask before activating a new version so an update never reloads the
+      // page in the middle of an analysis (see PwaUpdatePrompt).
+      registerType: 'prompt',
 
-      // vite-plugin-pwa precaches everything Vite emits by default
-      // (js, css, html, png, svg, woff2…). No override needed.
       workbox: {
-        // navigateFallback: safety net for any URL variant while offline.
-        // The full app shell (index.html + all JS/CSS) is precached, so
-        // navigating to the app root while offline is already covered by the
-        // precache handler. This line covers edge-case URLs that don't appear
-        // in the precache manifest (e.g. /some/deep/path typed directly).
-        // Since the app has no client-side router, all valid app URLs are "/",
-        // but this ensures a graceful fallback in every browser.
-        navigateFallback: '/index.html',
-
-        // Pyodide WASM/wheel/data files are fetched at runtime from the CDN
-        // and are NOT in the Vite build output, so precaching can't cover them.
-        // We use a CacheFirst runtime rule instead.
-        //
-        // Size context:
-        //   pyodide.asm.wasm  ~10 MB
-        //   numpy wheel        ~4 MB
-        //   scipy wheel       ~30 MB
-        //   plus .js loader, stdlib, etc. — total first load ~55–70 MB
-        //
-        // CacheFirst is correct: these files are content-addressed (versioned
-        // in the URL path) so a cache hit is always valid. maxEntries 80
-        // covers all individual Pyodide/numpy/scipy assets with room to spare.
-        // maxAgeSeconds 1 year matches the CDN's own immutable cache headers.
-        //
-        // cacheableResponse { statuses: [0, 200] } allows opaque cross-origin
-        // responses (status 0 from no-cors requests) to be stored; without
-        // this, many CDN assets are silently dropped by the Cache API.
+        // Take control on first install so engine downloads made during the
+        // first visit are already served from (and stored in) the SW cache.
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,json}'],
+        globIgnores: ['offline-assets.json', 'screenshots/**', '.well-known/**', 'privacy.html'],
+        // Precache only the app shell; lazy chunks are runtime-cached below.
+        manifestTransforms: [
+          async (entries) => ({
+            manifest: entries.filter(({ url }) =>
+              !/\.(js|css)$/.test(url) || shared.initial.has(url)),
+            warnings: [],
+          }),
+        ],
         runtimeCaching: [
           {
-            urlPattern: new RegExp(`^${PYODIDE_CDN}/pyodide/`),
+            // Hashed lazy chunks, CSS and fonts: immutable, so CacheFirst.
+            // (A RegExp, not a function: functions are serialised into sw.js
+            // without their closure, so they cannot reference `base`.)
+            urlPattern: new RegExp(`${escapeRe(base)}assets/.+\\.(?:js|css|woff2?|ttf)$`),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'pyodide-cdn-v1',
-              expiration: {
-                maxEntries: 80,
-                maxAgeSeconds: 31_536_000,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
+              cacheName: 'sigma-assets',
+              expiration: { maxEntries: 300, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // Python engine files (versioned URLs). Same cache name as the
+            // in-app downloader (src/lib/engine/download.js) so both share it.
+            urlPattern: new RegExp(`^${escapeRe(PYODIDE_CDN)}`),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: `pyodide-${PYODIDE_VERSION}`,
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],
       },
 
       manifest: {
+        id: './',
         name: 'Sigma — Statistical Analysis',
         short_name: 'Sigma',
         description: 'Offline-first statistical analysis workbench — descriptive stats, t-tests, ANOVA, regression, and more, running entirely in the browser without sending data to any server.',
-        start_url: '/',
+        start_url: './',
+        scope: './',
         display: 'standalone',
+        display_override: ['standalone', 'minimal-ui'],
         // orientation intentionally absent — not locked, works in portrait and landscape
         background_color: '#f2f5f8',
         theme_color: '#1f5fa6',
@@ -73,20 +166,28 @@ export default defineConfig({
         lang: 'ar',
         dir: 'rtl',
         categories: ['education', 'productivity', 'utilities'],
+        prefer_related_applications: false,
+        launch_handler: { client_mode: 'navigate-existing' },
+        shortcuts: [
+          { name: 'تحليل البيانات', short_name: 'تحليل', url: './?tab=analyze', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+          { name: 'النتائج', short_name: 'النتائج', url: './?tab=results', icons: [{ src: 'icon-192.png', sizes: '192x192' }] },
+        ],
+        screenshots: [
+          { src: 'screenshots/phone-welcome.png', sizes: '1080x1920', type: 'image/png', form_factor: 'narrow', label: 'شاشة البداية' },
+          { src: 'screenshots/phone-analyze.png', sizes: '1080x1920', type: 'image/png', form_factor: 'narrow', label: 'التحليلات الإحصائية' },
+          { src: 'screenshots/phone-results.png', sizes: '1080x1920', type: 'image/png', form_factor: 'narrow', label: 'النتائج والرسوم' },
+          { src: 'screenshots/desktop-data.png', sizes: '1920x1080', type: 'image/png', form_factor: 'wide', label: 'إدخال البيانات' },
+        ],
         icons: [
-          {
-            src: '/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),
   ],
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js', 'tests/**/*.test.js'],
+  },
 })

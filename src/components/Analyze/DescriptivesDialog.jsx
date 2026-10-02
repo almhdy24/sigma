@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { computeDescriptives } from '../../lib/stats/descriptives.js';
 import { detectOutliersIQR, detectOutliersZScore } from '../../lib/stats/outliers.js';
 import { apaDescriptives } from '../../lib/apaMethods.js';
@@ -50,7 +50,7 @@ export default function DescriptivesDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.descriptives);
       const _groups = getAnalysisCaseGroups(cases, activeFilter, variables, splitVar);
       for (const _group of _groups) {
         const cases = _group.cases;
@@ -59,8 +59,8 @@ export default function DescriptivesDialog({ onClose, onResultAdded, onHelp }) {
           : '';
 
         const selectedVars = variables.filter((v) => selected.has(v.id));
-        const statCols = ['N', 'Missing', 'Mean', 'Median', 'Mode', 'Std Dev',
-          'Variance', 'Min', 'Max', 'Range', 'Q1', 'Q3', 'IQR', 'Skewness', 'Kurtosis'];
+        const statCols = ['N', t('table.missing'), t('table.mean'), t('table.median'), t('table.mode'), t('table.std_dev'),
+          t('table.variance'), t('table.min'), t('table.max'), t('table.range'), 'Q1', 'Q3', 'IQR', t('table.skewness'), t('table.kurtosis')];
 
         const rows = [];
         const outlierRows = [];
@@ -82,7 +82,7 @@ export default function DescriptivesDialog({ onClose, onResultAdded, onHelp }) {
 
         const tables = [{
           title: t('analyze.descriptives'),
-          columns: ['Variable', ...statCols],
+          columns: [t('table.variable'), ...statCols],
           rows,
         }];
 
@@ -111,7 +111,7 @@ export default function DescriptivesDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[DescriptivesDialog] analysis error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

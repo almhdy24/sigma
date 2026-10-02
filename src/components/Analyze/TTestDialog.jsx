@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { oneSampleTTest, independentTTest, pairedTTest } from '../../lib/stats/ttest.js';
 import { mannWhitneyU, wilcoxonSignedRank } from '../../lib/stats/nonparametric.js';
 import { shapiroWilkTest, levenesTest } from '../../lib/stats/assumptions.js';
@@ -93,7 +93,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.ttest);
       const _groups = getAnalysisCaseGroups(cases, activeFilter, variables, splitVar);
       for (const _group of _groups) {
         const cases = _group.cases;
@@ -122,7 +122,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
           methodsParagraph = apaOneSampleTTest(v.label || v.name, testValue, res);
           tables.push({
             title: t('dialog.ttestOneSample'),
-            columns: ['Statistic', 'Value'],
+            columns: [t('table.statistic'), t('table.value')],
             rows: tableRows,
           });
         } else if (testType === 'independent') {
@@ -160,7 +160,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
           methodsParagraph = apaIndependentTTest(v.label || v.name, gv.label || gv.name, String(groups[0]), String(groups[1]), res);
           tables.push({
             title: t('dialog.ttestIndependent'),
-            columns: ['Statistic', 'Value', ''],
+            columns: [t('table.statistic'), t('table.value'), ''],
             rows: tableRows,
           });
 
@@ -169,7 +169,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
             const rStr = mw.r == null ? '—' : `${FMT(mw.r)} (${cohensMag(mw.r)})`;
             tables.push({
               title: 'Mann-Whitney U (non-parametric)',
-              columns: ['Statistic', 'Value', ''],
+              columns: [t('table.statistic'), t('table.value'), ''],
               rows: [
                 ['Group', `${groups[0]} (n=${mw.nA})`, `${groups[1]} (n=${mw.nB})`],
                 ['Median', FMT(mw.medianA), FMT(mw.medianB)],
@@ -203,7 +203,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
           methodsParagraph = apaPairedTTest(vA.label || vA.name, vB.label || vB.name, res);
           tables.push({
             title: t('dialog.ttestPaired'),
-            columns: ['Statistic', 'Value'],
+            columns: [t('table.statistic'), t('table.value')],
             rows: tableRows,
           });
 
@@ -212,7 +212,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
             const rStr = wx.r == null ? '—' : FMT(wx.r);
             tables.push({
               title: 'Wilcoxon Signed-Rank (non-parametric)',
-              columns: ['Statistic', 'Value'],
+              columns: [t('table.statistic'), t('table.value')],
               rows: [
                 ['N (non-zero diffs)', wx.n],
                 ['Median diff', FMT(wx.medianDiff)],
@@ -237,7 +237,7 @@ export default function TTestDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[TTestDialog] analysis error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

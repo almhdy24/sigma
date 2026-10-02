@@ -1,0 +1,37 @@
+name: 🐞 Bug report / الإبلاغ عن خطأ
+description: Something is broken or gives a wrong result
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **remove any real patient or personal data** from screenshots and files.
+        شكراً! يرجى **حذف أي بيانات شخصية أو بيانات مرضى حقيقية** من الصور والملفات.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / ماذا حدث؟
+      description: Include the steps to reproduce.
+      placeholder: "1. Open … 2. Click … 3. See …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect? / ما المتوقع؟
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / الجزء
+      options: [Data entry, Import/Export, Analysis results, Charts, PDF export, Offline / install, Language / RTL, Other]
+  - type: input
+    id: device
+    attributes:
+      label: Device & browser / الجهاز والمتصفح
+      placeholder: "e.g. Samsung A54, Chrome 140 — installed app"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or sample file / صور أو ملف مثال

@@ -23,7 +23,7 @@ class ErrorBoundaryCore extends Component {
       <div style={{
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', gap: 16,
+        minHeight: '100dvh', gap: 16,
         background: 'var(--page)',
         padding: 24, textAlign: 'center',
       }}>

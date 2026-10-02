@@ -23,7 +23,7 @@ export default function RecodeDialog({ onClose }) {
   const variables = useDatasetStore((s) => s.variables);
   const cases = useDatasetStore((s) => s.cases);
   const addVariable = useDatasetStore((s) => s.addVariable);
-  const updateCell = useDatasetStore((s) => s.updateCell);
+  const setColumn = useDatasetStore((s) => s.setColumn);
 
   const [sourceVarId, setSourceVarId] = useState(variables[0]?.id ?? '');
   const [targetName, setTargetName] = useState('');
@@ -69,6 +69,7 @@ export default function RecodeDialog({ onClose }) {
       measure: 'nominal',
     });
 
+    const recoded = new Map();
     for (const c of cases) {
       const srcVal = c.values[sourceVarId];
       let matched = null;
@@ -99,8 +100,9 @@ export default function RecodeDialog({ onClose }) {
           ? parseFloat(matched)
           : matched;
 
-      updateCell(c.id, newVarId, finalVal);
+      recoded.set(c.id, finalVal);
     }
+    setColumn(newVarId, recoded);
 
     onClose();
   };

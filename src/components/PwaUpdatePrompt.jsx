@@ -27,7 +27,9 @@ export default function PwaUpdatePrompt() {
   const close = () => { setOfflineReady(false); setNeedRefresh(false); };
 
   // On mobile, sit above the 56px tab bar; on desktop use the bottom-start corner
-  const bottomOffset = isMobile ? 76 : 20;
+  const bottomOffset = isMobile
+    ? 'calc(var(--bottom-nav-h) + 20px + var(--safe-bottom))'
+    : 'calc(20px + var(--safe-bottom))';
 
   return (
     <div

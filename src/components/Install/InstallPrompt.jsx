@@ -126,7 +126,7 @@ export default function InstallPrompt({ showBanner, isIos, onInstall, onDismiss 
         aria-label={t('pwa.installTitle')}
         style={{
           position: 'fixed',
-          bottom: 56,
+          bottom: 'calc(var(--bottom-nav-h) + var(--safe-bottom))',
           insetInline: 0,
           zIndex: 300,
           background: 'var(--surface)',
@@ -150,7 +150,7 @@ export default function InstallPrompt({ showBanner, isIos, onInstall, onDismiss 
       aria-label={t('pwa.installTitle')}
       style={{
         position: 'fixed',
-        bottom: 20,
+        bottom: 'calc(20px + var(--safe-bottom))',
         insetInlineEnd: 20,
         zIndex: 300,
         background: 'var(--surface)',

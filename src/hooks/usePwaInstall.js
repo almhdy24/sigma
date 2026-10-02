@@ -37,17 +37,15 @@ function recordDismissal() {
 export default function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showBanner, setShowBanner]         = useState(false);
-  const [isIos, setIsIos]                   = useState(false);
+  // iOS Safari never fires beforeinstallprompt; detect it once up front.
+  const [isIos] = useState(() => typeof navigator !== 'undefined' && isIosSafari());
 
   useEffect(() => {
     if (isStandalone() || wasDismissedRecently()) return;
 
-    const ios = isIosSafari();
-    setIsIos(ios);
-
     let showTimer = null;
 
-    if (ios) {
+    if (isIos) {
       // iOS Safari never fires beforeinstallprompt — show manual instructions
       showTimer = setTimeout(() => setShowBanner(true), 12_000);
       return () => clearTimeout(showTimer);
@@ -64,7 +62,7 @@ export default function usePwaInstall() {
       window.removeEventListener('beforeinstallprompt', handler);
       clearTimeout(showTimer);
     };
-  }, []);
+  }, [isIos]);
 
   const install = async () => {
     if (!deferredPrompt) return;

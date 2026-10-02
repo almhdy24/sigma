@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
 import { computeROC } from '../../lib/stats/roc.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { extractValues } from '../../lib/stats/extractValues.js';
 import {
-  overlay, modal, overlayClass, modalClass, dialogTitle, footer,
+  overlay, modal, overlayClass, modalClass, footer,
   btnPrimary, btnSecondary, inputSel, fieldLabel, errorMsg,
 } from './_dialogStyles.js';
 
@@ -55,7 +55,7 @@ export default function RocCurveDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.roc);
       const scoreVar = variables.find((v) => v.id === scoreVarId);
       const refVarDef = variables.find((v) => v.id === refVarId);
       const scoreVals = extractValues(cases, scoreVar);
@@ -76,7 +76,7 @@ export default function RocCurveDialog({ onClose, onResultAdded, onHelp }) {
 
       const aucTable = {
         title: t('dialog.roc.aucTitle'),
-        columns: ['Statistic', 'Value'],
+        columns: [t('table.statistic'), t('table.value')],
         rows: [
           ['N', res.n],
           ['AUC', res.auc.toFixed(4)],
@@ -86,7 +86,7 @@ export default function RocCurveDialog({ onClose, onResultAdded, onHelp }) {
 
       const rocPointsTable = {
         title: 'ROC Curve Points',
-        columns: ['FPR', 'TPR', 'Threshold'],
+        columns: ['FPR', 'TPR', t('table.threshold')],
         rows: res.points.map((p) => [
           p.fpr.toFixed(4),
           p.tpr.toFixed(4),
@@ -106,7 +106,7 @@ export default function RocCurveDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[RocCurveDialog] error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

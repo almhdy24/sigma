@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import useDatasetStore from '../../store/datasetStore.js';
+import { parseFile, sanitizeNames, suggestType } from '../../lib/importFile.js';
 import {
   overlay, dialogTitle, footer,
   btnPrimary, btnSecondary, errorMsg,
@@ -10,71 +9,12 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-function sanitizeName(header) {
-  let s = String(header).replace(/[^a-zA-Z0-9_]/g, '_');
-  if (/^[0-9]/.test(s)) s = '_' + s;
-  return s.slice(0, 32) || 'var1';
-}
-
-function suggestType(values) {
-  const nonEmpty = values.filter(
-    v => v !== null && v !== undefined && String(v).trim() !== '',
-  );
-  if (nonEmpty.length === 0) return 'string';
-  const allNumeric = nonEmpty.every(v => !isNaN(Number(String(v).trim())));
-  if (allNumeric) return 'numeric';
-  const distinct = new Set(nonEmpty.map(v => String(v))).size;
-  return distinct <= 10 ? 'categorical' : 'string';
-}
-
-async function parseFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  if (ext === 'csv') {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: ({ meta, data, errors }) => {
-          if (data.length === 0 && errors.length > 0) {
-            reject(new Error(errors[0].message));
-          } else {
-            resolve({ headers: meta.fields ?? [], rows: data });
-          }
-        },
-        error: (err) => reject(new Error(String(err.message ?? err))),
-      });
-    });
-  }
-  if (ext === 'xlsx' || ext === 'xls') {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const wb = XLSX.read(e.target.result, { type: 'array' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-          if (!raw.length) throw new Error('Empty sheet');
-          const headers = raw[0].map(h => String(h ?? ''));
-          const rows = raw.slice(1).map(row => {
-            const obj = {};
-            headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
-            return obj;
-          });
-          resolve({ headers, rows });
-        } catch (err) { reject(err); }
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsArrayBuffer(file);
-    });
-  }
-  throw new Error('unsupported');
-}
-
 function buildInitialMappings(headers, rows, existingVars) {
-  return headers.map(header => {
+  const names = sanitizeNames(headers);
+  return headers.map((header, i) => {
     const colVals = rows.map(r => r[header]);
     const suggestedType = suggestType(colVals);
-    const suggestedName = sanitizeName(header);
+    const suggestedName = names[i];
     const match = existingVars.find(v => v.name === suggestedName);
     return {
       action: match ? 'map' : 'create',
@@ -143,7 +83,9 @@ export default function ImportDialog({ onClose }) {
       setParseError(
         err.message === 'unsupported'
           ? t('import.unsupportedType')
-          : t('import.parseError', { error: err.message }),
+          : err.message === 'legacy-xls'
+            ? t('import.legacyXls')
+            : t('import.parseError', { error: err.message }),
       );
     } finally {
       setParsing(false);
@@ -260,7 +202,7 @@ export default function ImportDialog({ onClose }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv,.txt,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               style={{ display: 'none' }}
               onChange={e => {
                 const f = e.target.files[0];

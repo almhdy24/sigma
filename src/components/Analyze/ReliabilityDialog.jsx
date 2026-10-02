@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import useDatasetStore from '../../store/datasetStore.js';
 import useResultsStore from '../../store/resultsStore.js';
 import { computeCronbachsAlpha } from '../../lib/stats/reliability.js';
-import { getPyodide } from '../../lib/pyodideLoader.js';
+import { ANALYSIS_PACKAGES, getPyodide } from '../../lib/pyodideLoader.js';
 import { extractValues } from '../../lib/stats/extractValues.js';
 import {
   overlay, modal, overlayClass, modalClass, dialogTitle, varList, varItem, varItemClass, footer,
@@ -43,7 +43,7 @@ export default function ReliabilityDialog({ onClose, onResultAdded, onHelp }) {
     setRunning(true);
     setError(null);
     try {
-      const py = await getPyodide();
+      const py = await getPyodide(ANALYSIS_PACKAGES.reliability);
       const selVars = variables.filter((v) => selected.has(v.id));
       const itemsData = selVars.map((v) => ({
         name: v.label || v.name,
@@ -54,7 +54,7 @@ export default function ReliabilityDialog({ onClose, onResultAdded, onHelp }) {
 
       const alphaTable = {
         title: t('dialog.reliability.alphaTitle'),
-        columns: ['Statistic', 'Value'],
+        columns: [t('table.statistic'), t('table.value')],
         rows: [
           [t('dialog.reliability.alpha'), res.alpha.toFixed(4)],
           [t('dialog.reliability.nItems'), res.itemCount],
@@ -89,7 +89,7 @@ export default function ReliabilityDialog({ onClose, onResultAdded, onHelp }) {
       onResultAdded();
     } catch (e) {
       console.error('[ReliabilityDialog] error:', e);
-      setError(t('dialog.analysisError'));
+      setError(e?.name === 'EngineError' ? e.message : t('dialog.analysisError'));
     } finally {
       setRunning(false);
     }

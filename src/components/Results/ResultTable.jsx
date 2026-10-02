@@ -11,6 +11,7 @@ export default function ResultTable({ title, columns, rows }) {
     background: 'var(--accent-tint)',
     color: 'var(--ink)',
     textAlign: 'start',
+    whiteSpace: 'nowrap', // narrow screens scroll the table instead of wrapping headers
   };
 
   return (
